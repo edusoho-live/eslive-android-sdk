@@ -18,7 +18,7 @@
     dependencies {
         ...
 
-        implementation 'com.edusoho.LiveCloudClient:0.1.1'
+        implementation 'com.edusoho.LiveCloudClient:0.1.2'
     }
     ```
 

@@ -44,6 +44,8 @@ public class LiveCloudActivity extends AppCompatActivity {
     private Boolean isFullscreen = false;
     private PermissionRequest myRequest;
 
+    private static final String JSInterface = "LiveCloudBridge";
+
     public static void launch(Context context, String url) {
         Intent intent = new Intent(context, LiveCloudActivity.class);
         intent.putExtra("url", url);
@@ -75,7 +77,7 @@ public class LiveCloudActivity extends AppCompatActivity {
         super.onDestroy();
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (webView != null) {
-            webView.removeJavascriptInterface("LiveCloudMsg");
+            webView.removeJavascriptInterface(JSInterface);
             webView.setWebViewClient(null);
             webView.setWebChromeClient(null);
             webView.loadDataWithBaseURL(null, "", "text/html", "utf-8", null);
@@ -113,7 +115,7 @@ public class LiveCloudActivity extends AppCompatActivity {
         webView = findViewById(R.id.webView);
         webView.setWebViewClient(createWebViewClient());
         webView.setWebChromeClient(createWebChromeClient());
-        webView.addJavascriptInterface(this, "LiveCloudMsg");
+        webView.addJavascriptInterface(this, JSInterface);
 
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
