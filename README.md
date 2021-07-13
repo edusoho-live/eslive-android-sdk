@@ -1,4 +1,5 @@
 # LivcCloudClient-Android
+[![](https://jitpack.io/v/codeages/livecloud-android-sdk.svg)](https://jitpack.io/#codeages/livecloud-android-sdk)
 
 ## 集成 SDK
 
@@ -17,7 +18,7 @@
     dependencies {
         ...
 
-        implementation 'com.edusoho.LiveCloudClient:0.1.0'
+        implementation 'com.edusoho.LiveCloudClient:0.1.1'
     }
     ```
 
@@ -39,7 +40,7 @@
 在 app/proguard-rules.pro 文件中添加如下行，防止混淆 LiveCloud SDK 的代码：
 
 ```
--keep class com.edusoho.livecloud.**{*;}
+-keep class com.edusoho.LiveCloudClient.**{*;}
 
 -dontwarn dalvik.**
 -dontwarn com.tencent.smtt.**
@@ -56,7 +57,7 @@
 ### 代码示例
 
 ```java
-import com.edusoho.livecloud.LiveCloudActivity;
+import com.edusoho.LiveCloudClient.LiveCloudActivity;
 
     ......
 
