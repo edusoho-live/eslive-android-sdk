@@ -1,0 +1,3 @@
+rootProject.name = "LiveCloud"
+include ':app'
+include ':LiveCloudClient'
