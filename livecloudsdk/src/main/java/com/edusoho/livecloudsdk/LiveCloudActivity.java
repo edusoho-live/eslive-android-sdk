@@ -8,6 +8,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.PixelFormat;
 import android.net.UrlQuerySanitizer;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,7 +22,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.gson.Gson;
 import com.tencent.smtt.export.external.TbsCoreSettings;
 import com.tencent.smtt.export.external.interfaces.JsPromptResult;
 import com.tencent.smtt.export.external.interfaces.JsResult;
@@ -34,6 +34,10 @@ import com.tencent.smtt.sdk.WebSettings;
 import com.tencent.smtt.sdk.WebView;
 import com.tencent.smtt.sdk.WebViewClient;
 
+import org.json.JSONObject;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -98,14 +102,17 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     private void loadRoomURL() {
-        Map<String, Object> info = new HashMap<>();
-        String token = new UrlQuerySanitizer(url).getValue("token");
-        info.putAll(LiveCloudUtils.jwtDecodeWithJwtString(token));
-        info.putAll(LiveCloudUtils.deviceInfo(this));
-        info.put("x5Version", QbSdk.getTbsVersion(this));
-        String infoString = new Gson().toJson(info);
+        String infoString = deviceInfoString();
+        String base64String;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            base64String = Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(infoString.getBytes(StandardCharsets.UTF_8));
+        } else {
+            base64String = android.util.Base64.encodeToString(infoString.getBytes(StandardCharsets.UTF_8),
+                    android.util.Base64.NO_PADDING | android.util.Base64.NO_WRAP | android.util.Base64.URL_SAFE);
+        }
 
-        webView.loadUrl(url + "&info=" + infoString);
+        webView.loadUrl(url + "&device=" + base64String);
 //        webView.loadUrl("https://debugtbs.qq.com");
 //        webView.loadUrl("https://webrtc.github.io/samples/");
     }
@@ -135,6 +142,13 @@ public class LiveCloudActivity extends AppCompatActivity {
         map.put(TbsCoreSettings.TBS_SETTINGS_USE_SPEEDY_CLASSLOADER, true);
         map.put(TbsCoreSettings.TBS_SETTINGS_USE_DEXLOADER_SERVICE, true);
         QbSdk.initTbsSettings(map);
+    }
+
+
+    private String deviceInfoString() {
+        Map<String, Object> info = new HashMap<>(LiveCloudUtils.deviceInfo(this));
+        info.put("x5Version", QbSdk.getTbsVersion(this));
+        return new JSONObject(info).toString();
     }
 
     private WebViewClient createWebViewClient() {
@@ -207,7 +221,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     @JavascriptInterface
     public String getDeviceInfo() {
         Map<String, Object> info = LiveCloudUtils.deviceInfo(this);
-        return new Gson().toJson(info);
+        return new JSONObject(info).toString();
     }
 
     private void setWindowFullScreen() {

@@ -10,13 +10,15 @@ import android.telephony.TelephonyManager;
 
 import androidx.core.app.ActivityCompat;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class LiveCloudUtils {
+
+    private static final int SDKVersion = 1;
 
     protected static Map<String, Object> jwtDecodeWithJwtString(String token) {
         String[] chunks = token.split("\\.");
@@ -25,14 +27,18 @@ public class LiveCloudUtils {
         }
 
         String payload = new String(android.util.Base64.decode(chunks[1], android.util.Base64.DEFAULT));
-        JsonObject json = new Gson().fromJson(payload, JsonObject.class);
-        Map<String, Object> result = new HashMap<>();
-        result.put("rid", json.get("rid"));
-        result.put("role", json.get("role"));
-        result.put("uid", json.get("uid"));
-        result.put("name", json.get("name"));
-
-        return result;
+        try {
+            JSONObject json = new JSONObject(payload);
+            Map<String, Object> result = new HashMap<>();
+            result.put("rid", json.get("rid"));
+            result.put("role", json.get("role"));
+            result.put("uid", json.get("uid"));
+            result.put("name", json.get("name"));
+            return result;
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return new HashMap<>();
     }
 
     protected static Map<String, Object> deviceInfo(Context context) {
@@ -43,7 +49,7 @@ public class LiveCloudUtils {
         result.put("network", getNetworkState(context));
         result.put("appName", context.getApplicationInfo().processName);
         result.put("appVersion", getAppVersion(context));
-        result.put("sdkVersion", 1);
+        result.put("sdkVersion", SDKVersion);
         result.put("resolution", context.getResources().getDisplayMetrics().widthPixels + "x"
                 + context.getResources().getDisplayMetrics().heightPixels);
 
