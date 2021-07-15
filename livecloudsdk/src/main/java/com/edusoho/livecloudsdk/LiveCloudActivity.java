@@ -1,4 +1,4 @@
-package com.edusoho.LiveCloudClient;
+package com.edusoho.livecloudsdk;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -230,7 +230,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
 
-                // Show an expanation to the user *asynchronously* -- don't block
+                // Show an explanation to the user *asynchronously* -- don't block
                 // this thread waiting for the user's response! After the user
                 // sees the explanation, try again to request the permission.
 

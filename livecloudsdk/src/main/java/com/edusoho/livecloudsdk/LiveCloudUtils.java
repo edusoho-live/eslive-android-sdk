@@ -1,4 +1,4 @@
-package com.edusoho.LiveCloudClient;
+package com.edusoho.livecloudsdk;
 
 import android.Manifest;
 import android.content.Context;

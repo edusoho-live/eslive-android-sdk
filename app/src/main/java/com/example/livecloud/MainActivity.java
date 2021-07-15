@@ -6,7 +6,7 @@ import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.edusoho.LiveCloudClient.LiveCloudActivity;
+import com.edusoho.livecloudsdk.LiveCloudActivity;
 import com.google.android.material.textfield.TextInputLayout;
 
 public class MainActivity extends AppCompatActivity {
