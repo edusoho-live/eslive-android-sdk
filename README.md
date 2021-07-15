@@ -1,4 +1,4 @@
-# LivcCloudClient-Android
+# LivcCloudSDK-Android
 [![](https://jitpack.io/v/codeages/livecloud-android-sdk.svg)](https://jitpack.io/#codeages/livecloud-android-sdk)
 
 ## 集成 SDK
@@ -18,7 +18,7 @@
     dependencies {
         ...
 
-        implementation 'com.edusoho.LiveCloudClient:0.1.2'
+        implementation 'com.edusoho.livecloudsdk:0.1.3'
     }
     ```
 
@@ -57,12 +57,12 @@
 ### 代码示例
 
 ```java
-import com.edusoho.LiveCloudClient.LiveCloudActivity;
+import com.edusoho.livecloudsdk.LiveCloudActivity;
 
     ......
 
     // 通过接口获取直播课堂 url
-    LiveCloudActivity.launch(this, url);
+    LiveCloudActivity.launch(this, url, null);
 
     ......
     
