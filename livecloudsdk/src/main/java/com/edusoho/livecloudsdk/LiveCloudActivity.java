@@ -37,8 +37,11 @@ import com.tencent.smtt.sdk.WebViewClient;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.Base64;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class LiveCloudActivity extends AppCompatActivity {
@@ -50,9 +53,14 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     private static final String JSInterface = "LiveCloudBridge";
 
-    public static void launch(Context context, String url) {
+    public static void launch(Context context, String url, Map<String, Object> options) {
         Intent intent = new Intent(context, LiveCloudActivity.class);
         intent.putExtra("url", url);
+        if (options != null && options.get("logUrl") != null) {
+            intent.putExtra("logUrl", (String) options.get("logUrl"));
+        } else {
+            intent.putExtra("logUrl", "https://live-log.edusoho.com/collect");
+        }
         context.startActivity(intent);
     }
 
@@ -68,6 +76,8 @@ public class LiveCloudActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         url = getIntent().getStringExtra("url");
+
+        collectDeviceLog();
 
         initTbs();
 
@@ -102,13 +112,12 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     private void loadRoomURL() {
-        String infoString = deviceInfoString();
+        byte[] infoByte = new JSONObject(deviceInfoString()).toString().getBytes(StandardCharsets.UTF_8);
         String base64String;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            base64String = Base64.getUrlEncoder().withoutPadding()
-                    .encodeToString(infoString.getBytes(StandardCharsets.UTF_8));
+            base64String = Base64.getUrlEncoder().withoutPadding().encodeToString(infoByte);
         } else {
-            base64String = android.util.Base64.encodeToString(infoString.getBytes(StandardCharsets.UTF_8),
+            base64String = android.util.Base64.encodeToString(infoByte,
                     android.util.Base64.NO_PADDING | android.util.Base64.NO_WRAP | android.util.Base64.URL_SAFE);
         }
 
@@ -144,11 +153,58 @@ public class LiveCloudActivity extends AppCompatActivity {
         QbSdk.initTbsSettings(map);
     }
 
+    private void collectDeviceLog() {
+        String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.getDefault())
+                .format(new Date());
+        String token = new UrlQuerySanitizer(url).getValue("token");
+        Map<String, Object> jwt = LiveCloudUtils.jwtDecodeWithJwtString(token);
+        Map<String, Object> device = deviceInfoString();
 
-    private String deviceInfoString() {
+        Map<String, Object> log = new HashMap<>();
+        log.put("@timestamp", dateString);
+        log.put("message", "[event] @(sdk.enter), " + new JSONObject(device).toString());
+        log.put("device", device);
+        log.put("event", new HashMap<String, String>() {
+            {
+                put("action", "sdk.enter");
+                put("dataset", "livecloud.client");
+                put("id", LiveCloudUtils.randomString(10));
+                put("kind", "event");
+            }
+        });
+        log.put("log", new HashMap<String, String>() {
+            {
+                put("level", "INFO");
+            }
+        });
+        log.put("room", new HashMap<String, Object>() {
+            {
+                put("id", jwt.get("rid"));
+            }
+        });
+        log.put("user", new HashMap<String, Object>() {
+            {
+                put("id", jwt.get("uid"));
+                put("name", jwt.get("name"));
+                put("roles", new Object[]{jwt.get("role")});
+            }
+        });
+        Map<String, Object> payload = new HashMap<String, Object>() {
+            {
+                put("@timestamp", dateString);
+                put("logs", new Object[]{log});
+            }
+        };
+
+        String logUrl = getIntent().getStringExtra("logUrl");
+        LiveCloudHttpClient.post(logUrl, new JSONObject(payload).toString(), null);
+    }
+
+
+    private Map<String, Object> deviceInfoString() {
         Map<String, Object> info = new HashMap<>(LiveCloudUtils.deviceInfo(this));
         info.put("x5Version", QbSdk.getTbsVersion(this));
-        return new JSONObject(info).toString();
+        return info;
     }
 
     private WebViewClient createWebViewClient() {

@@ -15,10 +15,22 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 public class LiveCloudUtils {
 
     private static final int SDKVersion = 1;
+
+    private static final String ALLOWED_CHARACTERS ="0123456789qwertyuiopasdfghjklzxcvbnm";
+
+    protected static String randomString(final int sizeOfRandomString) {
+        final Random random = new Random();
+        final StringBuilder sb=new StringBuilder(sizeOfRandomString);
+        for (int i = 0; i < sizeOfRandomString; ++i) {
+            sb.append(ALLOWED_CHARACTERS.charAt(random.nextInt(ALLOWED_CHARACTERS.length())));
+        }
+        return sb.toString();
+    }
 
     protected static Map<String, Object> jwtDecodeWithJwtString(String token) {
         String[] chunks = token.split("\\.");
