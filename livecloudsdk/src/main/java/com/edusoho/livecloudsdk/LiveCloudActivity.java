@@ -65,6 +65,13 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        webView.evaluateJavascript("liveCloudNativeEventCallback('back')", value -> {
+
+        });
+    }
+
+    @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
@@ -278,6 +285,11 @@ public class LiveCloudActivity extends AppCompatActivity {
     public String getDeviceInfo() {
         Map<String, Object> info = LiveCloudUtils.deviceInfo(this);
         return new JSONObject(info).toString();
+    }
+
+    @JavascriptInterface
+    public void exit() {
+        finish();
     }
 
     private void setWindowFullScreen() {
