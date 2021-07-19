@@ -67,7 +67,9 @@ public class LiveCloudActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         webView.evaluateJavascript("liveCloudNativeEventCallback('back')", value -> {
-
+            if (value.equals("null")) {
+                super.onBackPressed();
+            }
         });
     }
 
