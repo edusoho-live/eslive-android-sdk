@@ -40,7 +40,7 @@
 在 app/proguard-rules.pro 文件中添加如下行，防止混淆 LiveCloud SDK 的代码：
 
 ```
--keep class com.edusoho.LiveCloudClient.**{*;}
+-keep class com.edusoho.livecloudsdk.**{*;}
 
 -dontwarn dalvik.**
 -dontwarn com.tencent.smtt.**
