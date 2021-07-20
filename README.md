@@ -1,4 +1,4 @@
-# LivcCloudSDK-Android
+# LiveCloudSDK-Android
 [![](https://jitpack.io/v/codeages/livecloud-android-sdk.svg)](https://jitpack.io/#codeages/livecloud-android-sdk)
 
 ## 集成 SDK
