@@ -46,7 +46,7 @@ afterEvaluate {
                 // You can then customize attributes of the publication as shown below.
                 groupId = 'com.edusoho.livecloudsdk'
                 artifactId = 'final'
-                version = '0.1.4'
+                version = '0.1.6'
             }
             // Creates a Maven publication called “debug”.
             debug(MavenPublication) {
@@ -55,7 +55,7 @@ afterEvaluate {
 
                 groupId = 'com.edusoho.livecloudsdk'
                 artifactId = 'final-debug'
-                version = '0.1.4'
+                version = '0.1.6'
             }
         }
     }
