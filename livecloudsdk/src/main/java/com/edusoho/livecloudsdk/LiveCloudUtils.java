@@ -88,7 +88,7 @@ public class LiveCloudUtils {
         }
         TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            return "mobile";
+            return "cellular";
         }
         int networkType = telephonyManager.getNetworkType();
         switch (networkType) {
@@ -131,7 +131,7 @@ public class LiveCloudUtils {
             case TelephonyManager.NETWORK_TYPE_LTE:
                 return "4G";
             default:
-                return "mobile";
+                return "cellular";
         }
     }
 

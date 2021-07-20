@@ -48,6 +48,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     protected WebView webView;
     protected String url = "";
+    private Boolean connect = false;
     private Boolean isFullscreen = false;
     private PermissionRequest myRequest;
 
@@ -66,11 +67,11 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        webView.evaluateJavascript("liveCloudNativeEventCallback('back')", value -> {
-            if (value.equals("null")) {
-                super.onBackPressed();
-            }
-        });
+        if (connect) {
+            webView.evaluateJavascript("liveCloudNativeEventCallback({name:'back'})", null);
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
@@ -269,6 +270,11 @@ public class LiveCloudActivity extends AppCompatActivity {
                 return true;
             }
         };
+    }
+
+    @JavascriptInterface
+    public void connect() {
+        connect = true;
     }
 
     @JavascriptInterface
