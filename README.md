@@ -18,7 +18,7 @@
     dependencies {
         ...
 
-        implementation 'com.github.codeages.livecloud-android-sdk:final:0.1.6'
+        implementation 'com.github.codeages.livecloud-android-sdk:final:0.1.7'
     }
     ```
 
@@ -40,7 +40,7 @@
 在 app/proguard-rules.pro 文件中添加如下行，防止混淆 LiveCloud SDK 的代码：
 
 ```
--keep class com.edusoho.livecloudsdk.**{*;}
+-keep class com.codeages.livecloudsdk.**{*;}
 
 -dontwarn dalvik.**
 -dontwarn com.tencent.smtt.**
@@ -57,12 +57,12 @@
 ### 代码示例
 
 ```java
-import com.edusoho.livecloudsdk.LiveCloudActivity;
+import com.codeages.livecloudsdk.LiveCloudActivity;
 
     ......
 
     // 通过接口获取直播课堂 url
-    LiveCloudActivity.launch(this, url, null);
+    LiveCloudActivity.launch(this, url, true, null);
 
     ......
     

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.edusoho.livecloudsdk">
+    package="com.codeages.livecloudsdk">
 
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -14,7 +14,7 @@
         android:allowBackup="true"
         android:supportsRtl="true">
         <activity
-            android:name="com.edusoho.livecloudsdk.LiveCloudActivity"
+            android:name=".LiveCloudActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:windowSoftInputMode="stateHidden|adjustResize"
             android:exported="true"

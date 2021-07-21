@@ -1,4 +1,4 @@
-package com.edusoho.livecloudsdk;
+package com.codeages.livecloudsdk;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -156,6 +156,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         webView.loadUrl(url + "&device=" + base64String);
 //        webView.loadUrl("https://debugtbs.qq.com");
+//        webView.loadUrl("https://live.edusoho.com/h5/detection");
 //        webView.loadUrl("https://webrtc.github.io/samples/");
     }
 

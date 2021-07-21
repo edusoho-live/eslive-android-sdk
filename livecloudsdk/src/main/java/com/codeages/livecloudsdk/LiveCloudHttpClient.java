@@ -1,4 +1,4 @@
-package com.edusoho.livecloudsdk;
+package com.codeages.livecloudsdk;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
