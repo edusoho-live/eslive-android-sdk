@@ -34,6 +34,8 @@ import com.tencent.smtt.sdk.WebSettings;
 import com.tencent.smtt.sdk.WebView;
 import com.tencent.smtt.sdk.WebViewClient;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
@@ -54,7 +56,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     private static final String JSInterface = "LiveCloudBridge";
 
-    public static void launch(Context context, String url, Map<String, Object> options) {
+    public static void launch(Context context, String url, Boolean isLive, Map<String, Object> options) {
         Intent intent = new Intent(context, LiveCloudActivity.class);
         intent.putExtra("url", url);
         if (options != null && options.get("logUrl") != null) {
@@ -62,7 +64,28 @@ public class LiveCloudActivity extends AppCompatActivity {
         } else {
             intent.putExtra("logUrl", "https://live-log.edusoho.com/collect");
         }
-        context.startActivity(intent);
+
+        String blacklistUrl = "https://livecloud-storage-sh.edusoho.net/metas/x5blacklist.json?ts=" + System.currentTimeMillis();
+        LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) -> {
+            if (successMsg != null) {
+                String version = String.valueOf(QbSdk.getTbsVersion(context));
+                try {
+                    JSONObject msg = new JSONObject(successMsg);
+                    JSONArray list = msg.getJSONArray(isLive ? "live" : "replay");
+                    for (int i = 0; i < list.length(); i++) {
+                        if (list.getString(i).equals(version)) {
+                            QbSdk.forceSysWebView();
+                            context.startActivity(intent);
+                            return;
+                        }
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            QbSdk.unForceSysWebView();
+            context.startActivity(intent);
+        });
     }
 
     @Override

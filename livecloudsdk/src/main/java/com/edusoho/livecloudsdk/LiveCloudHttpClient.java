@@ -13,7 +13,15 @@ public class LiveCloudHttpClient {
     public static void get(final String requestUrl, final OnRequestCallBack callBack) {
         new Thread() {
             public void run() {
-                getRequest(requestUrl, callBack);
+                get(requestUrl, 20000, callBack);
+            }
+        }.start();
+    }
+
+    public static void get(final String requestUrl, int timeout, final OnRequestCallBack callBack) {
+        new Thread() {
+            public void run() {
+                getRequest(requestUrl, timeout, callBack);
             }
         }.start();
     }
@@ -26,18 +34,17 @@ public class LiveCloudHttpClient {
         }.start();
     }
 
-    private static void getRequest(String requestUrl, OnRequestCallBack callBack) {
-        boolean isSuccess = false;
-        String message;
-
+    private static void getRequest(String requestUrl, int timeout, OnRequestCallBack callBack) {
+        String successMessage = null;
+        String errorMessage = null;
         InputStream inputStream = null;
         ByteArrayOutputStream baos = null;
         try {
             URL url = new URL(requestUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
-            connection.setConnectTimeout(20000);
-            connection.setReadTimeout(20000);
+            connection.setConnectTimeout(timeout);
+            connection.setReadTimeout(timeout);
             connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
             connection.setRequestProperty("Accept", "application/json");
             // 设置是否从httpUrlConnection读入，默认情况下是true;
@@ -56,14 +63,13 @@ public class LiveCloudHttpClient {
                     baos.write(bytes, 0, readLen);
                 }
 
-                message = baos.toString();
-                isSuccess = true;
+                successMessage = baos.toString();
             } else {
-                message = "请求失败 code:" + connection.getResponseCode();
+                errorMessage = "请求失败 code:" + connection.getResponseCode();
             }
 
         } catch (IOException e) {
-            message = e.getMessage();
+            errorMessage = e.getMessage();
             e.printStackTrace();
         } finally {
             try {
@@ -74,22 +80,18 @@ public class LiveCloudHttpClient {
                     inputStream.close();
                 }
             } catch (IOException e) {
-                message = e.getMessage();
+                errorMessage = e.getMessage();
                 e.printStackTrace();
             }
         }
         if (callBack != null) {
-            if (isSuccess) {
-                callBack.onSuccess(message);
-            } else {
-                callBack.onError(message);
-            }
+            callBack.onCompletion(successMessage, errorMessage);
         }
     }
 
     private static void postRequest(String requestUrl, String params, OnRequestCallBack callBack) {
-        boolean isSuccess = false;
-        String message;
+        String successMessage = null;
+        String errorMessage = null;
         InputStream inputStream = null;
         ByteArrayOutputStream baos = null;
         try {
@@ -125,14 +127,13 @@ public class LiveCloudHttpClient {
                     baos.write(bytes, 0, readLen);
                 }
 
-                message = baos.toString();
-                isSuccess = true;
+                successMessage = baos.toString();
             } else {
-                message = "请求失败 code:" + connection.getResponseCode();
+                errorMessage = "请求失败 code:" + connection.getResponseCode();
             }
 
         } catch (IOException e) {
-            message = e.getMessage();
+            errorMessage = e.getMessage();
             e.printStackTrace();
         } finally {
             try {
@@ -143,22 +144,17 @@ public class LiveCloudHttpClient {
                     inputStream.close();
                 }
             } catch (IOException e) {
-                message = e.getMessage();
+                errorMessage = e.getMessage();
                 e.printStackTrace();
             }
         }
         if (callBack != null) {
-            if (isSuccess) {
-                callBack.onSuccess(message);
-            } else {
-                callBack.onError(message);
-            }
+            callBack.onCompletion(successMessage, errorMessage);
         }
     }
 
     public interface OnRequestCallBack {
-        void onSuccess(String json);
-        void onError(String errorMsg);
+        void onCompletion(String successMsg, String errorMsg);
     }
 
 }

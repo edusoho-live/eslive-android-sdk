@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
                 api = api.substring(0, api.length() - 1);
             }
             String url = api + "/h5/room/" + room + "/enter?inapp=1&token=" + token;
-            LiveCloudActivity.launch(MainActivity.this, url, null);
+            LiveCloudActivity.launch(MainActivity.this, url, true, null);
         });
     }
 
