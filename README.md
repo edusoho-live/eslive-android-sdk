@@ -62,8 +62,13 @@ import com.codeages.livecloudsdk.LiveCloudActivity;
     ......
 
     // 通过接口获取直播课堂 url
+    String url = "";
+
+    // 直播
     LiveCloudActivity.launch(this, url, true, null);
 
+    // 回放
+    LiveCloudActivity.launch(this, url, false, null);
     ......
     
 ```
