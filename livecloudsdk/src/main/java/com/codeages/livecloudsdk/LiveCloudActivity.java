@@ -75,6 +75,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                     for (int i = 0; i < list.length(); i++) {
                         if (list.getString(i).equals(version)) {
                             QbSdk.forceSysWebView();
+                            intent.putExtra("disableX5", true);
                             context.startActivity(intent);
                             return;
                         }
@@ -84,6 +85,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                 }
             }
             QbSdk.unForceSysWebView();
+            intent.putExtra("disableX5", false);
             context.startActivity(intent);
         });
     }
@@ -238,6 +240,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     private Map<String, Object> deviceInfoString() {
         Map<String, Object> info = new HashMap<>(LiveCloudUtils.deviceInfo(this));
         info.put("x5Version", QbSdk.getTbsVersion(this));
+        info.put("disableX5", getIntent().getStringExtra("disableX5"));
         return info;
     }
 
