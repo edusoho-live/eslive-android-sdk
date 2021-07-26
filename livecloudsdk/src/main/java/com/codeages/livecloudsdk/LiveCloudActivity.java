@@ -124,9 +124,20 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null)  webView.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (webView != null)  webView.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (webView != null) {
             webView.removeJavascriptInterface(JSInterface);
             webView.setWebViewClient(null);
@@ -283,16 +294,19 @@ public class LiveCloudActivity extends AppCompatActivity {
                 jsPromptResult.cancel();
                 return true;
             }
+
             @Override
             public boolean onJsConfirm(WebView webView, String s, String s1, JsResult jsResult) {
                 jsResult.cancel();
                 return true;
             }
+
             @Override
             public boolean onJsAlert(WebView webView, String s, String s1, JsResult jsResult) {
                 jsResult.cancel();
                 return true;
             }
+
             @Override
             public boolean onJsBeforeUnload(WebView webView, String s, String s1, JsResult jsResult) {
                 jsResult.cancel();
@@ -330,23 +344,60 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     private void setWindowFullScreen() {
-//        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-//
-//        Window window = getWindow();
-//        window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-        View decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-        ActionBar actionBar = getActionBar();
-        actionBar.hide();
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        fullScreen(true);
     }
 
     private void setWindowShrinkScreen() {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-
-        Window window = getWindow();
-        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        fullScreen(false);
     }
+
+    public void fullScreen(boolean isFull) {//控制是否全屏显示
+        if (isFull) {
+            hideNavigationBar();
+
+            //适配刘海屏
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                WindowManager.LayoutParams lp = getWindow().getAttributes();
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                getWindow().setAttributes(lp);
+            }
+            //隐藏状态栏
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    // 全屏显示，隐藏状态栏和导航栏，拉出状态栏和导航栏显示一会儿后消失。
+                    getWindow().getDecorView().setSystemUiVisibility(
+                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+                } else {
+                    // 全屏显示，隐藏状态栏
+                    getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
+                }
+            }
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        } else {
+            showNavigationBar();
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
+    }
+
+    private void hideNavigationBar() {
+        View decorView = getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+        decorView.setSystemUiVisibility(uiOptions);
+    }
+
+    private void showNavigationBar() {
+        View decorView = getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_VISIBLE;
+        decorView.setSystemUiVisibility(uiOptions);
+    }
+
 
     private void askForPermission(String permission, int requestCode) {
         if (ContextCompat.checkSelfPermission(getApplicationContext(), permission)
