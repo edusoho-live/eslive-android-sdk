@@ -18,7 +18,7 @@
     dependencies {
         ...
 
-        implementation 'com.github.codeages.livecloud-android-sdk:final:0.1.8'
+        implementation 'com.github.codeages.livecloud-android-sdk:final:0.1.9'
     }
     ```
 
