@@ -20,7 +20,7 @@
             android:exported="true"
             android:screenOrientation="portrait"
             android:hardwareAccelerated="true"
-            android:theme="@style/AppThemeNoActionBar"/>
+            android:theme="@style/LiveCloudTheme"/>
         <service
             android:name="com.tencent.smtt.export.external.DexClassLoaderProviderService"
             android:label="dexopt"
