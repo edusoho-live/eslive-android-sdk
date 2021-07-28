@@ -2,7 +2,6 @@ package com.codeages.livecloudsdk;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -57,9 +56,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     private static final String JSInterface = "LiveCloudBridge";
 
-    private boolean disableX5 = false;
-
-    private ProgressDialog loadingDialog;
+    private boolean disableX5;
 
     public static void launch(Context context, String url, boolean isLive, Map<String, Object> options) {
         Intent intent = new Intent(context, LiveCloudActivity.class);
@@ -70,7 +67,29 @@ public class LiveCloudActivity extends AppCompatActivity {
         } else {
             intent.putExtra("logUrl", "https://live-log.edusoho.com/collect");
         }
-        context.startActivity(intent);
+        String blacklistUrl = "https://livecloud-storage-sh.edusoho.net/metas/x5blacklist.json?ts=" + System.currentTimeMillis();
+        LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) ->  {
+            if (successMsg != null) {
+                String version = String.valueOf(QbSdk.getTbsVersion(context));
+                try {
+                    JSONObject msg = new JSONObject(successMsg);
+                    JSONArray list = msg.getJSONArray(isLive ? "live" : "replay");
+                    for (int i = 0; i < list.length(); i++) {
+                        if (list.getString(i).equals(version)) {
+                            intent.putExtra("disableX5", true);
+                            QbSdk.forceSysWebView();
+                            context.startActivity(intent);
+                            return;
+                        }
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            intent.putExtra("disableX5", false);
+            QbSdk.unForceSysWebView();
+            context.startActivity(intent);
+        });
     }
 
     @Override
@@ -86,6 +105,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setTheme(R.style.LiveCloudTheme);
+        setContentView(R.layout.activity_live_cloud);
 
         // X5网页中的视频，上屏幕的时候，可能出现闪烁的情况，需要如下设置
         getWindow().setFormat(PixelFormat.TRANSLUCENT);
@@ -95,40 +115,15 @@ public class LiveCloudActivity extends AppCompatActivity {
         url = getIntent().getStringExtra("url");
         isLive = getIntent().getBooleanExtra("isLive", false);
         logUrl = getIntent().getStringExtra("logUrl");
+        disableX5 = getIntent().getBooleanExtra("disableX5", false);
 
         collectDeviceLog();
 
         initTbs();
 
-        loadingDialog = ProgressDialog.show(this, "", "请稍等...", true, false, null);
-        String blacklistUrl = "https://livecloud-storage-sh.edusoho.net/metas/x5blacklist.json?ts=" + System.currentTimeMillis();
-        LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) -> {
-            runOnUiThread(() -> {
-                if (loadingDialog != null) loadingDialog.dismiss();
-                if (isFinishing() || isDestroyed()) return;
-                if (successMsg != null) {
-                    String version = String.valueOf(QbSdk.getTbsVersion(LiveCloudActivity.this));
-                    try {
-                        JSONObject msg = new JSONObject(successMsg);
-                        JSONArray list = msg.getJSONArray(isLive ? "live" : "replay");
-                        for (int i = 0; i < list.length(); i++) {
-                            if (list.getString(i).equals(version)) {
-                                disableX5 = true;
-                                QbSdk.forceSysWebView();
-                                createWebView();
-                                loadRoomURL();
-                                return;
-                            }
-                        }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
-                QbSdk.unForceSysWebView();
-                createWebView();
-                loadRoomURL();
-            });
-        });
+        createWebView();
+
+        loadRoomURL();
     }
 
     @Override
@@ -185,7 +180,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     private void createWebView() {
-        webView = new WebView(this);
+        webView = findViewById(R.id.webView);
         webView.setWebViewClient(createWebViewClient());
         webView.setWebChromeClient(createWebChromeClient());
         webView.addJavascriptInterface(this, JSInterface);
@@ -199,8 +194,6 @@ public class LiveCloudActivity extends AppCompatActivity {
         webSettings.setDomStorageEnabled(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         webSettings.setMediaPlaybackRequiresUserGesture(false);
-
-        setContentView(webView);
     }
 
     private void initTbs() {
