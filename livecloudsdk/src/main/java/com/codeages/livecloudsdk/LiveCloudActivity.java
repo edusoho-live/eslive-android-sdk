@@ -28,6 +28,8 @@ import com.tencent.smtt.export.external.interfaces.ConsoleMessage;
 import com.tencent.smtt.export.external.interfaces.JsPromptResult;
 import com.tencent.smtt.export.external.interfaces.JsResult;
 import com.tencent.smtt.export.external.interfaces.PermissionRequest;
+import com.tencent.smtt.export.external.interfaces.SslError;
+import com.tencent.smtt.export.external.interfaces.SslErrorHandler;
 import com.tencent.smtt.export.external.interfaces.WebResourceError;
 import com.tencent.smtt.export.external.interfaces.WebResourceRequest;
 import com.tencent.smtt.sdk.QbSdk;
@@ -191,6 +193,10 @@ public class LiveCloudActivity extends AppCompatActivity {
             webView.destroy();
             webView = null;
         }
+        if (mCountDownTimer != null) {
+            mCountDownTimer.cancel();
+            mCountDownTimer = null;
+        }
     }
 
     @Override
@@ -255,17 +261,19 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     }
 
+    private CountDownTimer mCountDownTimer;
+
     private void connectTimer() {
-        new CountDownTimer(10000, 1000) {
+        mCountDownTimer = new CountDownTimer(10000, 1000) {
 
             @Override
             public void onTick(long l) {
-                connectCountdown ++;
+                connectCountdown++;
             }
 
             @Override
             public void onFinish() {
-                connectCountdown ++;
+                connectCountdown++;
             }
         }.start();
     }
@@ -383,6 +391,12 @@ public class LiveCloudActivity extends AppCompatActivity {
                 };
                 postLog("SDK.WebViewError", logData);
 //                String x5CrashInfo = WebView.getCrashExtraMessage(view.getContext());
+            }
+
+            @Override
+            public void onReceivedSslError(WebView webView, SslErrorHandler sslErrorHandler, SslError sslError) {
+                sslErrorHandler.proceed();
+                super.onReceivedSslError(webView, sslErrorHandler, sslError);
             }
         };
     }

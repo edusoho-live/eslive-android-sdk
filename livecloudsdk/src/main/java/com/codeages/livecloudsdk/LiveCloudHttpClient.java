@@ -7,31 +7,38 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class LiveCloudHttpClient {
 
     public static void get(final String requestUrl, final OnRequestCallBack callBack) {
-        new Thread() {
+        HttpThreadPoolUtils.execute(new Runnable() {
+            @Override
             public void run() {
                 get(requestUrl, 3000, callBack);
             }
-        }.start();
+        });
     }
 
     public static void get(final String requestUrl, int timeout, final OnRequestCallBack callBack) {
-        new Thread() {
+        HttpThreadPoolUtils.execute(new Runnable() {
+            @Override
             public void run() {
                 getRequest(requestUrl, timeout, callBack);
             }
-        }.start();
+        });
     }
 
     public static void post(final String requestUrl, final String params, final OnRequestCallBack callBack) {
-        new Thread() {
+        HttpThreadPoolUtils.execute(new Runnable() {
+            @Override
             public void run() {
                 postRequest(requestUrl, params, callBack);
             }
-        }.start();
+        });
     }
 
     private static void getRequest(String requestUrl, int timeout, OnRequestCallBack callBack) {
@@ -156,5 +163,7 @@ public class LiveCloudHttpClient {
     public interface OnRequestCallBack {
         void onCompletion(String successMsg, String errorMsg);
     }
+
+
 
 }
