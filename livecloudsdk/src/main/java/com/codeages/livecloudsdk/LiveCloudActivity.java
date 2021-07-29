@@ -67,6 +67,9 @@ public class LiveCloudActivity extends AppCompatActivity {
         } else {
             intent.putExtra("logUrl", "https://live-log.edusoho.com/collect");
         }
+
+        LiveCloudUtils.checkClearCaches(context);
+
         String blacklistUrl = "https://livecloud-storage-sh.edusoho.net/metas/x5blacklist.json?ts=" + System.currentTimeMillis();
         LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) ->  {
             if (successMsg != null) {
@@ -76,8 +79,8 @@ public class LiveCloudActivity extends AppCompatActivity {
                     JSONArray list = msg.getJSONArray(isLive ? "live" : "replay");
                     for (int i = 0; i < list.length(); i++) {
                         if (list.getString(i).equals(version)) {
-                            intent.putExtra("disableX5", true);
                             QbSdk.forceSysWebView();
+                            intent.putExtra("disableX5", true);
                             context.startActivity(intent);
                             return;
                         }
@@ -86,8 +89,8 @@ public class LiveCloudActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-            intent.putExtra("disableX5", false);
             QbSdk.unForceSysWebView();
+            intent.putExtra("disableX5", false);
             context.startActivity(intent);
         });
     }
@@ -117,13 +120,13 @@ public class LiveCloudActivity extends AppCompatActivity {
         logUrl = getIntent().getStringExtra("logUrl");
         disableX5 = getIntent().getBooleanExtra("disableX5", false);
 
-        collectDeviceLog();
-
         initTbs();
 
         createWebView();
 
         loadRoomURL();
+
+        collectDeviceLog();
     }
 
     @Override
@@ -197,6 +200,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     private void initTbs() {
+        QbSdk.setDownloadWithoutWifi(true);
         QbSdk.initX5Environment(this, null);
 
         Map<String, Object> map = new HashMap<>();
@@ -257,6 +261,7 @@ public class LiveCloudActivity extends AppCompatActivity {
         Map<String, Object> info = new HashMap<>(LiveCloudUtils.deviceInfo(this));
         info.put("x5Version", QbSdk.getTbsVersion(this));
         info.put("disableX5", disableX5);
+        info.put("x5Loaded", webView.getX5WebViewExtension() != null);
         return info;
     }
 

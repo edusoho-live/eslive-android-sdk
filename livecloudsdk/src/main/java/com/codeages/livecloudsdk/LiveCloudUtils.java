@@ -2,20 +2,27 @@ package com.codeages.livecloudsdk;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Environment;
 import android.telephony.TelephonyManager;
 
 import androidx.core.app.ActivityCompat;
 
+import com.tencent.smtt.sdk.QbSdk;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+
+import static android.content.Context.MODE_PRIVATE;
 
 public class LiveCloudUtils {
 
@@ -66,6 +73,38 @@ public class LiveCloudUtils {
                 + context.getResources().getDisplayMetrics().heightPixels);
 
         return result;
+    }
+
+    protected static void checkClearCaches(Context context) {
+        String nowVersion = getAppVersion(context);
+        SharedPreferences sharedPref = context.getSharedPreferences("LiveCloudPref", MODE_PRIVATE);
+        String lastVersion = sharedPref.getString("appVersion", null);
+        if (lastVersion == null || !lastVersion.equals(nowVersion)) {
+            QbSdk.clearAllWebViewCache(context, true);
+            deleteDir(context.getCacheDir());
+            if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+                deleteDir(context.getExternalCacheDir());
+            }
+        }
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString("appVersion", nowVersion);
+        editor.apply();
+    }
+
+    private static void deleteDir(File dir) {
+        if (dir == null) {
+            return;
+        }
+        if (dir.isDirectory()) {
+            String[] children = dir.list();
+            if (children != null) {
+                for (String child : children) {
+                    deleteDir(new File(dir, child));
+                }
+            }
+        }
+        //noinspection ResultOfMethodCallIgnored
+        dir.delete();
     }
 
     private static String getNetworkState(Context context) {
