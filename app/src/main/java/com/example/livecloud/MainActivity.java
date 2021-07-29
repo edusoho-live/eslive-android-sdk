@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
                 api = api.substring(0, api.length() - 1);
             }
             String url = api + (type.isChecked() ? "/h5/room/" : "/h5/replay/") + room + "/enter?inapp=1&token=" + token;
-            LiveCloudActivity.launch(MainActivity.this, url, type.isChecked(), null);
+            LiveCloudActivity.launch(MainActivity.this, url, type.isChecked(), true, null);
         });
     }
 

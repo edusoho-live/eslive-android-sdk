@@ -2,6 +2,7 @@ package com.codeages.livecloudsdk;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -20,6 +21,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.widget.ContentLoadingProgressBar;
 
 import com.tencent.smtt.export.external.TbsCoreSettings;
 import com.tencent.smtt.export.external.interfaces.ConsoleMessage;
@@ -58,23 +60,32 @@ public class LiveCloudActivity extends AppCompatActivity {
     private Boolean connect = false;
     private Boolean isFullscreen = false;
     private int connectCountdown = 0;
+    private ContentLoadingProgressBar loadingView;
 
     private static final String JSInterface = "LiveCloudBridge";
 
-    public static void launch(Context context, String url, boolean isLive, Map<String, Object> options) {
+    /**
+     * @param isGrantedPermission true: 权限获取成功 false：权限获取失败
+     */
+    public static void launch(Context context, String url, boolean isLive, boolean isGrantedPermission, Map<String, Object> options) {
         Intent intent = new Intent(context, LiveCloudActivity.class);
         intent.putExtra("url", url);
         intent.putExtra("isLive", isLive);
+        intent.putExtra("isGrantedPermission", isGrantedPermission);
         if (options != null && options.get("logUrl") != null) {
             intent.putExtra("logUrl", (String) options.get("logUrl"));
         } else {
             intent.putExtra("logUrl", "https://live-log.edusoho.com/collect");
         }
 
+        ProgressDialog progressDialog = ProgressDialog.show(context, "", "加载中", true, true);
+
         LiveCloudUtils.checkClearCaches(context);
 
+        initTbs(context);
+
         String blacklistUrl = "https://livecloud-storage-sh.edusoho.net/metas/x5blacklist.json?ts=" + System.currentTimeMillis();
-        LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) ->  {
+        LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) -> {
             if (successMsg != null) {
                 String version = String.valueOf(QbSdk.getTbsVersion(context));
                 try {
@@ -85,6 +96,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                             QbSdk.forceSysWebView();
                             intent.putExtra("disableX5", true);
                             context.startActivity(intent);
+                            progressDialog.dismiss();
                             return;
                         }
                     }
@@ -95,6 +107,7 @@ public class LiveCloudActivity extends AppCompatActivity {
             QbSdk.unForceSysWebView();
             intent.putExtra("disableX5", false);
             context.startActivity(intent);
+            progressDialog.dismiss();
         });
     }
 
@@ -107,14 +120,14 @@ public class LiveCloudActivity extends AppCompatActivity {
             if (connectCountdown >= 10) {
                 Map<String, Object> logData = new HashMap<String, Object>() {
                     {
-                        put("message", "[event] @(sdk.connectTimeout)");
+                        put("message", "[event] @(SDK.ConnectTimeout)");
                     }
                 };
                 postLog("SDK.ConnectTimeout", logData);
             } else {
                 Map<String, Object> logData = new HashMap<String, Object>() {
                     {
-                        put("message", "[event] @(sdk.notConnect)");
+                        put("message", "[event] @(SDK.NotConnect)");
                     }
                 };
                 postLog("SDK.NotConnect", logData);
@@ -138,7 +151,8 @@ public class LiveCloudActivity extends AppCompatActivity {
         logUrl = getIntent().getStringExtra("logUrl");
         disableX5 = getIntent().getBooleanExtra("disableX5", false);
 
-        initTbs();
+        loadingView = findViewById(R.id.loadingView);
+        loadingView.show();
 
         createWebView();
 
@@ -147,6 +161,10 @@ public class LiveCloudActivity extends AppCompatActivity {
         connectTimer();
 
         collectDeviceLog();
+
+        if (!getIntent().getBooleanExtra("isGrantedPermission", true)) {
+            collectPermissionDeny();
+        }
     }
 
     @Override
@@ -203,6 +221,23 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     private void createWebView() {
+        QbSdk.setTbsListener(new TbsListener() {
+            @Override
+            public void onDownloadFinish(int i) {
+
+            }
+
+            @Override
+            public void onInstallFinish(int i) {
+                collectX5Installed();
+            }
+
+            @Override
+            public void onDownloadProgress(int i) {
+
+            }
+        });
+
         webView = findViewById(R.id.webView);
         webView.setWebViewClient(createWebViewClient());
         webView.setWebChromeClient(createWebChromeClient());
@@ -235,37 +270,22 @@ public class LiveCloudActivity extends AppCompatActivity {
         }.start();
     }
 
-    private void initTbs() {
+    private static void initTbs(Context context) {
         QbSdk.setDownloadWithoutWifi(true);
-        QbSdk.setTbsListener(new TbsListener() {
-            @Override
-            public void onDownloadFinish(int i) {
-
-            }
-
-            @Override
-            public void onInstallFinish(int i) {
-                collectX5Installed();
-            }
-
-            @Override
-            public void onDownloadProgress(int i) {
-
-            }
-        });
-        QbSdk.initX5Environment(this, null);
 
         Map<String, Object> map = new HashMap<>();
         map.put(TbsCoreSettings.TBS_SETTINGS_USE_SPEEDY_CLASSLOADER, true);
         map.put(TbsCoreSettings.TBS_SETTINGS_USE_DEXLOADER_SERVICE, true);
         QbSdk.initTbsSettings(map);
+
+        QbSdk.initX5Environment(context.getApplicationContext(), null);
     }
 
     private void collectDeviceLog() {
         Map<String, Object> device = deviceInfoMap();
         Map<String, Object> logData = new HashMap<String, Object>() {
             {
-                put("message", "[event] @(sdk.enter), " + new JSONObject(device).toString());
+                put("message", "[event] @(SDK.Enter), " + new JSONObject(device).toString());
                 put("device", device);
             }
         };
@@ -275,10 +295,19 @@ public class LiveCloudActivity extends AppCompatActivity {
     private void collectX5Installed() {
         Map<String, Object> logData = new HashMap<String, Object>() {
             {
-                put("message", "[event] @(sdk.x5Installed)");
+                put("message", "[event] @(SDK.X5Installed)");
             }
         };
         postLog("SDK.X5Installed", logData);
+    }
+
+    private void collectPermissionDeny() {
+        Map<String, Object> logData = new HashMap<String, Object>() {
+            {
+                put("message", "[event] @(SDK.PermissionDeny)");
+            }
+        };
+        postLog("SDK.PermissionDeny", logData);
     }
 
     private void postLog(String action, Map<String, Object> logData) {
@@ -339,11 +368,17 @@ public class LiveCloudActivity extends AppCompatActivity {
         return new WebViewClient() {
 
             @Override
+            public void onPageFinished(WebView webView, String s) {
+                super.onPageFinished(webView, s);
+                loadingView.hide();
+            }
+
+            @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 super.onReceivedError(view, request, error);
                 Map<String, Object> logData = new HashMap<String, Object>() {
                     {
-                        put("message", "[event] @(sdk.webViewError), " + error.getErrorCode() + error.getDescription());
+                        put("message", "[event] @(SDK.WebViewError), " + error.getErrorCode() + error.getDescription());
                     }
                 };
                 postLog("SDK.WebViewError", logData);
@@ -401,7 +436,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                 if (connectCountdown < 10 && consoleMessage.messageLevel().equals(ConsoleMessage.MessageLevel.ERROR)) {
                     Map<String, Object> logData = new HashMap<String, Object>() {
                         {
-                            put("message", "[event] @(sdk.webViewError), " + consoleMessage.message());
+                            put("message", "[event] @(SDK.WebViewError), " + consoleMessage.message());
                         }
                     };
                     postLog("SDK.WebViewError", logData);

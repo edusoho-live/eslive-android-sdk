@@ -7,7 +7,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.Environment;
 import android.telephony.TelephonyManager;
 
 import androidx.core.app.ActivityCompat;
@@ -28,11 +27,11 @@ public class LiveCloudUtils {
 
     private static final int SDKVersion = 1;
 
-    private static final String ALLOWED_CHARACTERS ="0123456789qwertyuiopasdfghjklzxcvbnm";
+    private static final String ALLOWED_CHARACTERS = "0123456789qwertyuiopasdfghjklzxcvbnm";
 
     protected static String randomString(final int sizeOfRandomString) {
         final Random random = new Random();
-        final StringBuilder sb=new StringBuilder(sizeOfRandomString);
+        final StringBuilder sb = new StringBuilder(sizeOfRandomString);
         for (int i = 0; i < sizeOfRandomString; ++i) {
             sb.append(ALLOWED_CHARACTERS.charAt(random.nextInt(ALLOWED_CHARACTERS.length())));
         }
@@ -76,19 +75,23 @@ public class LiveCloudUtils {
     }
 
     protected static void checkClearCaches(Context context) {
-        String nowVersion = getAppVersion(context);
-        SharedPreferences sharedPref = context.getSharedPreferences("LiveCloudPref", MODE_PRIVATE);
-        String lastVersion = sharedPref.getString("appVersion", null);
-        if (lastVersion == null || !lastVersion.equals(nowVersion)) {
-            QbSdk.clearAllWebViewCache(context, true);
-            deleteDir(context.getCacheDir());
-            if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-                deleteDir(context.getExternalCacheDir());
+        try {
+            String nowVersion = getAppVersion(context);
+            SharedPreferences sharedPref = context.getSharedPreferences("LiveCloudPref", MODE_PRIVATE);
+            String lastVersion = sharedPref.getString("appVersion", null);
+            if (lastVersion == null || !lastVersion.equals(nowVersion)) {
+                QbSdk.clearAllWebViewCache(context, true);
+//                deleteDir(context.getCacheDir());
+//                if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+//                    deleteDir(context.getExternalCacheDir());
+//                }
             }
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.putString("appVersion", nowVersion);
+            editor.apply();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("appVersion", nowVersion);
-        editor.apply();
     }
 
     private static void deleteDir(File dir) {
