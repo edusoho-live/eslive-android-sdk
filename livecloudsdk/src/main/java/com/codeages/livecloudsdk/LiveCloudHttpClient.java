@@ -13,7 +13,7 @@ public class LiveCloudHttpClient {
     public static void get(final String requestUrl, final OnRequestCallBack callBack) {
         new Thread() {
             public void run() {
-                get(requestUrl, 20000, callBack);
+                get(requestUrl, 3000, callBack);
             }
         }.start();
     }
@@ -98,8 +98,8 @@ public class LiveCloudHttpClient {
             URL url = new URL(requestUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
-            connection.setConnectTimeout(20000);
-            connection.setReadTimeout(20000);
+            connection.setConnectTimeout(3000);
+            connection.setReadTimeout(3000);
             connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
             connection.setRequestProperty("Accept", "application/json");
             // 设置是否从httpUrlConnection读入，默认情况下是true;

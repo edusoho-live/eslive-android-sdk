@@ -10,6 +10,7 @@ import android.graphics.PixelFormat;
 import android.net.UrlQuerySanitizer;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -21,12 +22,14 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.tencent.smtt.export.external.TbsCoreSettings;
+import com.tencent.smtt.export.external.interfaces.ConsoleMessage;
 import com.tencent.smtt.export.external.interfaces.JsPromptResult;
 import com.tencent.smtt.export.external.interfaces.JsResult;
 import com.tencent.smtt.export.external.interfaces.PermissionRequest;
 import com.tencent.smtt.export.external.interfaces.WebResourceError;
 import com.tencent.smtt.export.external.interfaces.WebResourceRequest;
 import com.tencent.smtt.sdk.QbSdk;
+import com.tencent.smtt.sdk.TbsListener;
 import com.tencent.smtt.sdk.WebChromeClient;
 import com.tencent.smtt.sdk.WebSettings;
 import com.tencent.smtt.sdk.WebView;
@@ -50,13 +53,13 @@ public class LiveCloudActivity extends AppCompatActivity {
     protected String url = "";
     protected String logUrl = "";
     protected boolean isLive;
+    private boolean disableX5;
+    private PermissionRequest myRequest;
     private Boolean connect = false;
     private Boolean isFullscreen = false;
-    private PermissionRequest myRequest;
+    private int connectCountdown = 0;
 
     private static final String JSInterface = "LiveCloudBridge";
-
-    private boolean disableX5;
 
     public static void launch(Context context, String url, boolean isLive, Map<String, Object> options) {
         Intent intent = new Intent(context, LiveCloudActivity.class);
@@ -101,6 +104,21 @@ public class LiveCloudActivity extends AppCompatActivity {
             webView.evaluateJavascript("liveCloudNativeEventCallback({name:'back'})", null);
         } else {
             super.onBackPressed();
+            if (connectCountdown >= 10) {
+                Map<String, Object> logData = new HashMap<String, Object>() {
+                    {
+                        put("message", "[event] @(sdk.connectTimeout)");
+                    }
+                };
+                postLog("SDK.ConnectTimeout", logData);
+            } else {
+                Map<String, Object> logData = new HashMap<String, Object>() {
+                    {
+                        put("message", "[event] @(sdk.notConnect)");
+                    }
+                };
+                postLog("SDK.NotConnect", logData);
+            }
         }
     }
 
@@ -125,6 +143,8 @@ public class LiveCloudActivity extends AppCompatActivity {
         createWebView();
 
         loadRoomURL();
+
+        connectTimer();
 
         collectDeviceLog();
     }
@@ -166,7 +186,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     private void loadRoomURL() {
-        byte[] infoByte = new JSONObject(deviceInfoString()).toString().getBytes(StandardCharsets.UTF_8);
+        byte[] infoByte = new JSONObject(deviceInfoMap()).toString().getBytes(StandardCharsets.UTF_8);
         String base64String;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             base64String = Base64.getUrlEncoder().withoutPadding().encodeToString(infoByte);
@@ -197,10 +217,42 @@ public class LiveCloudActivity extends AppCompatActivity {
         webSettings.setDomStorageEnabled(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         webSettings.setMediaPlaybackRequiresUserGesture(false);
+
+    }
+
+    private void connectTimer() {
+        new CountDownTimer(10000, 1000) {
+
+            @Override
+            public void onTick(long l) {
+                connectCountdown ++;
+            }
+
+            @Override
+            public void onFinish() {
+                connectCountdown ++;
+            }
+        }.start();
     }
 
     private void initTbs() {
         QbSdk.setDownloadWithoutWifi(true);
+        QbSdk.setTbsListener(new TbsListener() {
+            @Override
+            public void onDownloadFinish(int i) {
+
+            }
+
+            @Override
+            public void onInstallFinish(int i) {
+                collectX5Installed();
+            }
+
+            @Override
+            public void onDownloadProgress(int i) {
+
+            }
+        });
         QbSdk.initX5Environment(this, null);
 
         Map<String, Object> map = new HashMap<>();
@@ -210,19 +262,37 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     private void collectDeviceLog() {
+        Map<String, Object> device = deviceInfoMap();
+        Map<String, Object> logData = new HashMap<String, Object>() {
+            {
+                put("message", "[event] @(sdk.enter), " + new JSONObject(device).toString());
+                put("device", device);
+            }
+        };
+        postLog("SDK.Enter", logData);
+    }
+
+    private void collectX5Installed() {
+        Map<String, Object> logData = new HashMap<String, Object>() {
+            {
+                put("message", "[event] @(sdk.x5Installed)");
+            }
+        };
+        postLog("SDK.X5Installed", logData);
+    }
+
+    private void postLog(String action, Map<String, Object> logData) {
         String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.getDefault())
                 .format(new Date());
         String token = new UrlQuerySanitizer(url).getValue("token");
         Map<String, Object> jwt = LiveCloudUtils.jwtDecodeWithJwtString(token);
-        Map<String, Object> device = deviceInfoString();
 
         Map<String, Object> log = new HashMap<>();
         log.put("@timestamp", dateString);
-        log.put("message", "[event] @(sdk.enter), " + new JSONObject(device).toString());
-        log.put("device", device);
+        log.putAll(logData);
         log.put("event", new HashMap<String, String>() {
             {
-                put("action", "sdk.enter");
+                put("action", action);
                 put("dataset", "livecloud.client");
                 put("id", LiveCloudUtils.randomString(10));
                 put("kind", "event");
@@ -257,7 +327,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
 
-    private Map<String, Object> deviceInfoString() {
+    private Map<String, Object> deviceInfoMap() {
         Map<String, Object> info = new HashMap<>(LiveCloudUtils.deviceInfo(this));
         info.put("x5Version", QbSdk.getTbsVersion(this));
         info.put("disableX5", disableX5);
@@ -271,7 +341,12 @@ public class LiveCloudActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 super.onReceivedError(view, request, error);
-
+                Map<String, Object> logData = new HashMap<String, Object>() {
+                    {
+                        put("message", "[event] @(sdk.webViewError), " + error.getErrorCode() + error.getDescription());
+                    }
+                };
+                postLog("SDK.WebViewError", logData);
 //                String x5CrashInfo = WebView.getCrashExtraMessage(view.getContext());
             }
         };
@@ -319,6 +394,19 @@ public class LiveCloudActivity extends AppCompatActivity {
             public boolean onJsBeforeUnload(WebView webView, String s, String s1, JsResult jsResult) {
                 jsResult.cancel();
                 return true;
+            }
+
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                if (connectCountdown < 10 && consoleMessage.messageLevel().equals(ConsoleMessage.MessageLevel.ERROR)) {
+                    Map<String, Object> logData = new HashMap<String, Object>() {
+                        {
+                            put("message", "[event] @(sdk.webViewError), " + consoleMessage.message());
+                        }
+                    };
+                    postLog("SDK.WebViewError", logData);
+                }
+                return super.onConsoleMessage(consoleMessage);
             }
         };
     }
