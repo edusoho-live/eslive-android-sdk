@@ -18,7 +18,7 @@
     dependencies {
         ...
 
-        implementation 'com.github.codeages.livecloud-android-sdk:final:0.2.2'
+        implementation 'com.github.codeages.livecloud-android-sdk:final:0.2.4'
     }
     ```
 
@@ -64,11 +64,14 @@ import com.codeages.livecloudsdk.LiveCloudActivity;
     // 通过接口获取直播课堂 url
     String url = "";
 
+    // 获取读写文件权限
+    Boolean isGrantedPermission = true;
+
     // 直播
-    LiveCloudActivity.launch(this, url, true, null);
+    LiveCloudActivity.launch(this, url, true, isGrantedPermission, null);
 
     // 回放
-    LiveCloudActivity.launch(this, url, false, null);
+    LiveCloudActivity.launch(this, url, false, isGrantedPermission, null);
     ......
     
 ```
