@@ -8,10 +8,8 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.PixelFormat;
-import android.net.UrlQuerySanitizer;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -58,10 +56,11 @@ public class LiveCloudActivity extends AppCompatActivity {
     protected String logUrl = "";
     protected boolean isLive;
     private boolean disableX5;
+    private String roomId = "0";
     private PermissionRequest myRequest;
     private Boolean connect = false;
     private Boolean isFullscreen = false;
-    private int connectCountdown = 0;
+    private Long enterTimestamp;
     private ContentLoadingProgressBar loadingView;
 
     private static final String JSInterface = "LiveCloudBridge";
@@ -74,6 +73,8 @@ public class LiveCloudActivity extends AppCompatActivity {
         intent.putExtra("url", url);
         intent.putExtra("isLive", isLive);
         intent.putExtra("isGrantedPermission", isGrantedPermission);
+        String roomId = String.valueOf(LiveCloudUtils.parseJwt(url).get("rid"));
+        intent.putExtra("roomId", roomId);
         if (options != null && options.get("logUrl") != null) {
             intent.putExtra("logUrl", (String) options.get("logUrl"));
         } else {
@@ -106,8 +107,13 @@ public class LiveCloudActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-            QbSdk.unForceSysWebView();
-            intent.putExtra("disableX5", false);
+            if (LiveCloudUtils.getTimeoutTimes(context, roomId) > 3) {
+                QbSdk.forceSysWebView();
+                intent.putExtra("disableX5", true);
+            } else {
+                QbSdk.unForceSysWebView();
+                intent.putExtra("disableX5", false);
+            }
             context.startActivity(intent);
             progressDialog.dismiss();
         });
@@ -118,12 +124,12 @@ public class LiveCloudActivity extends AppCompatActivity {
         if (connect) {
             webView.evaluateJavascript("liveCloudNativeEventCallback({name:'back'})", null);
         } else {
-            super.onBackPressed();
-            if (connectCountdown >= 10) {
+            if (enterDurationSecond() >= 10) {
+                int times = LiveCloudUtils.connectTimeout(this, roomId);
                 LiveCloudUtils.checkClearCaches(this);
                 Map<String, Object> logData = new HashMap<String, Object>() {
                     {
-                        put("message", "[event] @(SDK.ConnectTimeout)");
+                        put("message", "[event] @(SDK.ConnectTimeout), " + roomId + "=" + times);
                     }
                 };
                 postLog("SDK.ConnectTimeout", logData);
@@ -135,6 +141,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                 };
                 postLog("SDK.NotConnect", logData);
             }
+            super.onBackPressed();
         }
     }
 
@@ -153,6 +160,7 @@ public class LiveCloudActivity extends AppCompatActivity {
         isLive = getIntent().getBooleanExtra("isLive", false);
         logUrl = getIntent().getStringExtra("logUrl");
         disableX5 = getIntent().getBooleanExtra("disableX5", false);
+        roomId = getIntent().getStringExtra("roomId");
 
         loadingView = findViewById(R.id.loadingView);
         loadingView.show();
@@ -161,13 +169,14 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         loadRoomURL();
 
-        connectTimer();
-
         collectDeviceLog();
 
         if (!getIntent().getBooleanExtra("isGrantedPermission", true)) {
             collectPermissionDeny();
         }
+
+        enterTimestamp = System.currentTimeMillis();
+
     }
 
     @Override
@@ -193,10 +202,6 @@ public class LiveCloudActivity extends AppCompatActivity {
             webView.clearHistory();
             webView.destroy();
             webView = null;
-        }
-        if (mCountDownTimer != null) {
-            mCountDownTimer.cancel();
-            mCountDownTimer = null;
         }
     }
 
@@ -252,23 +257,6 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     }
 
-    private CountDownTimer mCountDownTimer;
-
-    private void connectTimer() {
-        mCountDownTimer = new CountDownTimer(10000, 1000) {
-
-            @Override
-            public void onTick(long l) {
-                connectCountdown++;
-            }
-
-            @Override
-            public void onFinish() {
-                connectCountdown++;
-            }
-        }.start();
-    }
-
     private static void initTbs(Context context) {
         QbSdk.setDownloadWithoutWifi(true);
 
@@ -312,8 +300,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     private void postLog(String action, Map<String, Object> logData) {
         String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.getDefault())
                 .format(new Date());
-        String token = new UrlQuerySanitizer(url).getValue("token");
-        Map<String, Object> jwt = LiveCloudUtils.jwtDecodeWithJwtString(token);
+        Map<String, Object> jwt = LiveCloudUtils.parseJwt(url);
 
         Map<String, Object> log = new HashMap<>();
         log.put("@timestamp", dateString);
@@ -440,7 +427,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                if (connectCountdown < 10 && consoleMessage.messageLevel().equals(ConsoleMessage.MessageLevel.ERROR)) {
+                if (enterDurationSecond() < 10 && consoleMessage.messageLevel().equals(ConsoleMessage.MessageLevel.ERROR)) {
                     Map<String, Object> logData = new HashMap<String, Object>() {
                         {
                             put("message", "[event] @(SDK.WebViewError), " + consoleMessage.message());
@@ -503,21 +490,14 @@ public class LiveCloudActivity extends AppCompatActivity {
                 getWindow().setAttributes(lp);
             }
             //隐藏状态栏
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    // 全屏显示，隐藏状态栏和导航栏，拉出状态栏和导航栏显示一会儿后消失。
-                    getWindow().getDecorView().setSystemUiVisibility(
-                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                                    | View.SYSTEM_UI_FLAG_FULLSCREEN
-                                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
-                } else {
-                    // 全屏显示，隐藏状态栏
-                    getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
-                }
-            }
+            // 全屏显示，隐藏状态栏和导航栏，拉出状态栏和导航栏显示一会儿后消失。
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         } else {
             showNavigationBar();
@@ -537,6 +517,9 @@ public class LiveCloudActivity extends AppCompatActivity {
         decorView.setSystemUiVisibility(uiOptions);
     }
 
+    private long enterDurationSecond() {
+        return (System.currentTimeMillis() - enterTimestamp) / 1000;
+    }
 
     private void askForPermission(String permission) {
         if (ContextCompat.checkSelfPermission(this, permission) ==

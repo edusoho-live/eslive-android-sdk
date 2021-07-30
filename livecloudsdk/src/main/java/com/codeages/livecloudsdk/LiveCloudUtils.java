@@ -7,6 +7,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.UrlQuerySanitizer;
 import android.telephony.TelephonyManager;
 
 import androidx.core.app.ActivityCompat;
@@ -38,7 +39,8 @@ public class LiveCloudUtils {
         return sb.toString();
     }
 
-    protected static Map<String, Object> jwtDecodeWithJwtString(String token) {
+    protected static Map<String, Object> parseJwt(String url) {
+        String token = new UrlQuerySanitizer(url).getValue("token");
         String[] chunks = token.split("\\.");
         if (chunks.length < 1) {
             return new HashMap<>();
@@ -108,6 +110,20 @@ public class LiveCloudUtils {
         }
         //noinspection ResultOfMethodCallIgnored
         dir.delete();
+    }
+
+    protected static int connectTimeout(Context context, String roomId) {
+        SharedPreferences sharedPref = context.getSharedPreferences("LiveCloudPref", MODE_PRIVATE);
+        int times = sharedPref.getInt(roomId, 0) + 1;
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putInt(roomId, times);
+        editor.apply();
+        return times;
+    }
+
+    protected static int getTimeoutTimes(Context context, String roomId) {
+        SharedPreferences sharedPref = context.getSharedPreferences("LiveCloudPref", MODE_PRIVATE);
+        return sharedPref.getInt(roomId, 0);
     }
 
     private static String getNetworkState(Context context) {
