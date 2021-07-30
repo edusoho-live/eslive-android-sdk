@@ -16,10 +16,10 @@ import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 
-import androidx.annotation.NonNull;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ContentLoadingProgressBar;
 
@@ -196,16 +196,6 @@ public class LiveCloudActivity extends AppCompatActivity {
         if (mCountDownTimer != null) {
             mCountDownTimer.cancel();
             mCountDownTimer = null;
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            myRequest.grant(myRequest.getResources());
-        } else {
-            myRequest.deny();
         }
     }
 
@@ -406,19 +396,21 @@ public class LiveCloudActivity extends AppCompatActivity {
 
             @Override
             public void onPermissionRequest(PermissionRequest request) {
-                myRequest = request;
-                for (String permission : request.getResources()) {
-                    switch (permission) {
-                        case PermissionRequest.RESOURCE_AUDIO_CAPTURE: {
-                            askForPermission(Manifest.permission.RECORD_AUDIO, 1);
-                            break;
-                        }
-                        case PermissionRequest.RESOURCE_VIDEO_CAPTURE: {
-                            askForPermission(Manifest.permission.CAMERA, 2);
-                            break;
+                runOnUiThread(() -> {
+                    for (String permission : request.getResources()) {
+                        myRequest = request;
+                        switch (permission) {
+                            case PermissionRequest.RESOURCE_AUDIO_CAPTURE: {
+                                askForPermission(Manifest.permission.RECORD_AUDIO);
+                                break;
+                            }
+                            case PermissionRequest.RESOURCE_VIDEO_CAPTURE: {
+                                askForPermission(Manifest.permission.CAMERA);
+                                break;
+                            }
                         }
                     }
-                }
+                });
             }
 
             @Override
@@ -545,21 +537,23 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
 
-    private void askForPermission(String permission, int requestCode) {
-        if (ContextCompat.checkSelfPermission(getApplicationContext(), permission)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
-
-                // Show an explanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-
-            } else {
-                ActivityCompat.requestPermissions(this, new String[]{permission}, requestCode);
-            }
+    private void askForPermission(String permission) {
+        if (ContextCompat.checkSelfPermission(this, permission) ==
+                PackageManager.PERMISSION_GRANTED) {
+//            myRequest.grant(myRequest.getResources());
         } else {
-            myRequest.grant(myRequest.getResources());
+            requestPermissionLauncher.launch(permission);
         }
     }
+
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                runOnUiThread(() -> {
+                    if (isGranted) {
+                        myRequest.grant(myRequest.getResources());
+                    } else {
+                        myRequest.deny();
+                    }
+                });
+            });
 }
