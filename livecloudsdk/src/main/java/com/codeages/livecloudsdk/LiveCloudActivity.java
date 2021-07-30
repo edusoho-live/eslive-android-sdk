@@ -42,11 +42,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
 import java.util.Base64;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 public class LiveCloudActivity extends AppCompatActivity {
@@ -62,6 +59,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     private Boolean isFullscreen = false;
     private Long enterTimestamp;
     private ContentLoadingProgressBar loadingView;
+    private LiveCloudLogUtils logUtils;
 
     private static final String JSInterface = "LiveCloudBridge";
 
@@ -132,14 +130,14 @@ public class LiveCloudActivity extends AppCompatActivity {
                         put("message", "[event] @(SDK.ConnectTimeout), " + roomId + "=" + times);
                     }
                 };
-                postLog("SDK.ConnectTimeout", logData);
+                logUtils.postLog("SDK.ConnectTimeout", logData);
             } else {
                 Map<String, Object> logData = new HashMap<String, Object>() {
                     {
                         put("message", "[event] @(SDK.NotConnect)");
                     }
                 };
-                postLog("SDK.NotConnect", logData);
+                logUtils.postLog("SDK.NotConnect", logData);
             }
             super.onBackPressed();
         }
@@ -165,14 +163,16 @@ public class LiveCloudActivity extends AppCompatActivity {
         loadingView = findViewById(R.id.loadingView);
         loadingView.show();
 
+        logUtils = new LiveCloudLogUtils(logUrl, url);
+
         createWebView();
 
         loadRoomURL();
 
-        collectDeviceLog();
+        logUtils.collectDeviceLog(deviceInfoMap());
 
         if (!getIntent().getBooleanExtra("isGrantedPermission", true)) {
-            collectPermissionDeny();
+            logUtils.collectPermissionDeny();
         }
 
         enterTimestamp = System.currentTimeMillis();
@@ -231,7 +231,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
             @Override
             public void onInstallFinish(int i) {
-                collectX5Installed();
+                logUtils.collectX5Installed();
             }
 
             @Override
@@ -268,79 +268,6 @@ public class LiveCloudActivity extends AppCompatActivity {
         QbSdk.initX5Environment(context.getApplicationContext(), null);
     }
 
-    private void collectDeviceLog() {
-        Map<String, Object> device = deviceInfoMap();
-        Map<String, Object> logData = new HashMap<String, Object>() {
-            {
-                put("message", "[event] @(SDK.Enter), " + new JSONObject(device).toString());
-                put("device", device);
-            }
-        };
-        postLog("SDK.Enter", logData);
-    }
-
-    private void collectX5Installed() {
-        Map<String, Object> logData = new HashMap<String, Object>() {
-            {
-                put("message", "[event] @(SDK.X5Installed)");
-            }
-        };
-        postLog("SDK.X5Installed", logData);
-    }
-
-    private void collectPermissionDeny() {
-        Map<String, Object> logData = new HashMap<String, Object>() {
-            {
-                put("message", "[event] @(SDK.PermissionDeny)");
-            }
-        };
-        postLog("SDK.PermissionDeny", logData);
-    }
-
-    private void postLog(String action, Map<String, Object> logData) {
-        String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.getDefault())
-                .format(new Date());
-        Map<String, Object> jwt = LiveCloudUtils.parseJwt(url);
-
-        Map<String, Object> log = new HashMap<>();
-        log.put("@timestamp", dateString);
-        log.putAll(logData);
-        log.put("event", new HashMap<String, String>() {
-            {
-                put("action", action);
-                put("dataset", "livecloud.client");
-                put("id", LiveCloudUtils.randomString(10));
-                put("kind", "event");
-            }
-        });
-        log.put("log", new HashMap<String, String>() {
-            {
-                put("level", "INFO");
-            }
-        });
-        log.put("room", new HashMap<String, Object>() {
-            {
-                put("id", jwt.get("rid"));
-            }
-        });
-        log.put("user", new HashMap<String, Object>() {
-            {
-                put("id", jwt.get("uid"));
-                put("name", jwt.get("name"));
-                put("roles", new Object[]{jwt.get("role")});
-            }
-        });
-        Map<String, Object> payload = new HashMap<String, Object>() {
-            {
-                put("@timestamp", dateString);
-                put("logs", new Object[]{log});
-            }
-        };
-
-
-        LiveCloudHttpClient.post(logUrl, new JSONObject(payload).toString(), null);
-    }
-
 
     private Map<String, Object> deviceInfoMap() {
         Map<String, Object> info = new HashMap<>(LiveCloudUtils.deviceInfo(this));
@@ -367,7 +294,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                         put("message", "[event] @(SDK.WebViewError), " + error.getErrorCode() + error.getDescription());
                     }
                 };
-                postLog("SDK.WebViewError", logData);
+                logUtils.postLog("SDK.WebViewError", logData);
 //                String x5CrashInfo = WebView.getCrashExtraMessage(view.getContext());
             }
 
@@ -433,7 +360,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                             put("message", "[event] @(SDK.WebViewError), " + consoleMessage.message());
                         }
                     };
-                    postLog("SDK.WebViewError", logData);
+                    logUtils.postLog("SDK.WebViewError", logData);
                 }
                 return super.onConsoleMessage(consoleMessage);
             }
