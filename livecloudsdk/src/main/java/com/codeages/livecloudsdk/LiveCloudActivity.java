@@ -120,6 +120,7 @@ public class LiveCloudActivity extends AppCompatActivity {
         } else {
             super.onBackPressed();
             if (connectCountdown >= 10) {
+                LiveCloudUtils.checkClearCaches(this);
                 Map<String, Object> logData = new HashMap<String, Object>() {
                     {
                         put("message", "[event] @(SDK.ConnectTimeout)");

@@ -44,7 +44,7 @@ public class LiveCloudUtils {
             return new HashMap<>();
         }
 
-        String payload = new String(android.util.Base64.decode(chunks[1], android.util.Base64.DEFAULT));
+        String payload = new String(android.util.Base64.decode(chunks[1], android.util.Base64.URL_SAFE));
         try {
             JSONObject json = new JSONObject(payload);
             Map<String, Object> result = new HashMap<>();
