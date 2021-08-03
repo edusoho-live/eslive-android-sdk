@@ -10,6 +10,8 @@ import android.net.NetworkInfo;
 import android.net.UrlQuerySanitizer;
 import android.os.Build;
 import android.telephony.TelephonyManager;
+import android.view.View;
+import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.CookieSyncManager;
 import android.webkit.WebIconDatabase;
@@ -17,6 +19,7 @@ import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewDatabase;
 
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import com.tencent.smtt.sdk.QbSdk;
@@ -235,4 +238,42 @@ public class LiveCloudUtils {
         return "";
     }
 
+
+    public static void fullScreen(AppCompatActivity activity, boolean isFull) {//控制是否全屏显示
+        if (isFull) {
+            hideNavigationBar(activity);
+
+            //适配刘海屏
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                WindowManager.LayoutParams lp = activity.getWindow().getAttributes();
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                activity.getWindow().setAttributes(lp);
+            }
+            //隐藏状态栏
+            // 全屏显示，隐藏状态栏和导航栏，拉出状态栏和导航栏显示一会儿后消失。
+            activity.getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+            activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        } else {
+            showNavigationBar(activity);
+            activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
+    }
+
+    private static void hideNavigationBar(AppCompatActivity activity) {
+        View decorView = activity.getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+        decorView.setSystemUiVisibility(uiOptions);
+    }
+
+    private static void showNavigationBar(AppCompatActivity activity) {
+        View decorView = activity.getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_VISIBLE;
+        decorView.setSystemUiVisibility(uiOptions);
+    }
 }
