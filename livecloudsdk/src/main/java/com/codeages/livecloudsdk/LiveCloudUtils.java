@@ -8,7 +8,14 @@ import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.UrlQuerySanitizer;
+import android.os.Build;
 import android.telephony.TelephonyManager;
+import android.webkit.CookieManager;
+import android.webkit.CookieSyncManager;
+import android.webkit.WebIconDatabase;
+import android.webkit.WebStorage;
+import android.webkit.WebView;
+import android.webkit.WebViewDatabase;
 
 import androidx.core.app.ActivityCompat;
 
@@ -82,11 +89,7 @@ public class LiveCloudUtils {
             SharedPreferences sharedPref = context.getSharedPreferences("LiveCloudPref", MODE_PRIVATE);
             String lastVersion = sharedPref.getString("appVersion", null);
             if (lastVersion == null || !lastVersion.equals(nowVersion)) {
-                QbSdk.clearAllWebViewCache(context, true);
-//                deleteDir(context.getCacheDir());
-//                if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-//                    deleteDir(context.getExternalCacheDir());
-//                }
+                deleteCache(context);
             }
             SharedPreferences.Editor editor = sharedPref.edit();
             editor.putString("appVersion", nowVersion);
@@ -94,6 +97,33 @@ public class LiveCloudUtils {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    protected static void deleteCache(Context context) {
+        Context appContext = context.getApplicationContext();
+        QbSdk.clearAllWebViewCache(appContext, true);
+        WebView webView = new WebView(appContext);
+        webView.removeJavascriptInterface("searchBoxJavaBridge_");
+        webView.removeJavascriptInterface("accessibility");
+        webView.removeJavascriptInterface("accessibilityTraversal");
+        webView.clearCache(true);
+        CookieSyncManager.createInstance(appContext);
+        CookieManager.getInstance().removeAllCookies(null);
+        WebViewDatabase.getInstance(appContext).clearUsernamePassword();
+        WebViewDatabase.getInstance(appContext).clearHttpAuthUsernamePassword();
+        WebViewDatabase.getInstance(appContext).clearFormData();
+        WebStorage.getInstance().deleteAllData();
+        WebIconDatabase.getInstance().removeAllIcons();
+
+        deleteDir(new File(appContext.getCacheDir(), "WebView"));
+        deleteDir(new File(appContext.getCacheDir(), "org.chromium.android_webview"));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            deleteDir(new File(appContext.getDataDir(), "app_webview"));
+        }
+//        deleteDir(context.getCacheDir());
+//        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+//            deleteDir(context.getExternalCacheDir());
+//        }
     }
 
     private static void deleteDir(File dir) {

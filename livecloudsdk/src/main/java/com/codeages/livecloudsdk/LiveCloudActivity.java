@@ -124,7 +124,7 @@ public class LiveCloudActivity extends AppCompatActivity {
         } else {
             if (enterDurationSecond() >= 10) {
                 int times = LiveCloudUtils.connectTimeout(this, roomId);
-                LiveCloudUtils.checkClearCaches(this);
+                LiveCloudUtils.deleteCache(this);
                 Map<String, Object> logData = new HashMap<String, Object>() {
                     {
                         put("message", "[event] @(SDK.ConnectTimeout), " + roomId + "=" + times);
@@ -252,9 +252,9 @@ public class LiveCloudActivity extends AppCompatActivity {
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         webSettings.setDefaultTextEncodingName("utf-8");
         webSettings.setDomStorageEnabled(true);
+        webSettings.setMixedContentMode(0);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         webSettings.setMediaPlaybackRequiresUserGesture(false);
-
     }
 
     private static void initTbs(Context context) {
@@ -291,7 +291,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                 super.onReceivedError(view, request, error);
                 Map<String, Object> logData = new HashMap<String, Object>() {
                     {
-                        put("message", "[event] @(SDK.WebViewError), " + error.getErrorCode() + error.getDescription());
+                        put("message", "[event] @(SDK.WebViewError), WebResourceError: " + error.getErrorCode() + " " + error.getDescription());
                     }
                 };
                 logUtils.postLog("SDK.WebViewError", logData);
@@ -301,7 +301,12 @@ public class LiveCloudActivity extends AppCompatActivity {
             @Override
             public void onReceivedSslError(WebView webView, SslErrorHandler sslErrorHandler, SslError sslError) {
                 sslErrorHandler.proceed();
-                super.onReceivedSslError(webView, sslErrorHandler, sslError);
+                Map<String, Object> logData = new HashMap<String, Object>() {
+                    {
+                        put("message", "[event] @(SDK.WebViewError), sslError: " + sslError.getPrimaryError() + " " + sslError.getUrl());
+                    }
+                };
+                logUtils.postLog("SDK.WebViewError", logData);
             }
         };
     }
@@ -357,7 +362,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                 if (enterDurationSecond() < 10 && consoleMessage.messageLevel().equals(ConsoleMessage.MessageLevel.ERROR)) {
                     Map<String, Object> logData = new HashMap<String, Object>() {
                         {
-                            put("message", "[event] @(SDK.WebViewError), " + consoleMessage.message());
+                            put("message", "[event] @(SDK.WebViewError), ConsoleMessage: " + consoleMessage.message());
                         }
                     };
                     logUtils.postLog("SDK.WebViewError", logData);
