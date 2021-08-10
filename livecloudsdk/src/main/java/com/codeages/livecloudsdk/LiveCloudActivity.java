@@ -107,6 +107,7 @@ public class LiveCloudActivity extends AppCompatActivity {
             if (LiveCloudUtils.getTimeoutTimes(context, roomId) > 3) {
                 QbSdk.forceSysWebView();
                 intent.putExtra("disableX5", true);
+                LiveCloudUtils.disableX5(context, roomId);
             } else {
                 QbSdk.unForceSysWebView();
                 intent.putExtra("disableX5", false);
@@ -374,6 +375,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     @JavascriptInterface
     public void connect() {
         connect = true;
+        LiveCloudUtils.clearTimeoutTimes(this, roomId);
     }
 
     @JavascriptInterface

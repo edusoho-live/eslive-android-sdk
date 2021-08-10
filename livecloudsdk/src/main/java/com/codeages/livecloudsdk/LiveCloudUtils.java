@@ -40,6 +40,8 @@ public class LiveCloudUtils {
 
     private static final String ALLOWED_CHARACTERS = "0123456789qwertyuiopasdfghjklzxcvbnm";
 
+    private static final String LCPref = "LiveCloudPref";
+
     protected static String randomString(final int sizeOfRandomString) {
         final Random random = new Random();
         final StringBuilder sb = new StringBuilder(sizeOfRandomString);
@@ -89,7 +91,7 @@ public class LiveCloudUtils {
     protected static void checkClearCaches(Context context) {
         try {
             String nowVersion = getAppVersion(context);
-            SharedPreferences sharedPref = context.getSharedPreferences("LiveCloudPref", MODE_PRIVATE);
+            SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
             String lastVersion = sharedPref.getString("appVersion", null);
             if (lastVersion == null || !lastVersion.equals(nowVersion)) {
                 deleteCache(context);
@@ -146,7 +148,7 @@ public class LiveCloudUtils {
     }
 
     protected static int connectTimeout(Context context, String roomId) {
-        SharedPreferences sharedPref = context.getSharedPreferences("LiveCloudPref", MODE_PRIVATE);
+        SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
         int times = sharedPref.getInt(roomId, 0) + 1;
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putInt(roomId, times);
@@ -155,8 +157,35 @@ public class LiveCloudUtils {
     }
 
     protected static int getTimeoutTimes(Context context, String roomId) {
-        SharedPreferences sharedPref = context.getSharedPreferences("LiveCloudPref", MODE_PRIVATE);
+        SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
+        if (System.currentTimeMillis() - sharedPref.getLong(roomId + "disableX5", 0L) > 30000) {
+            clearTimeoutTimes(context, roomId);
+            clearDisableX5(context, roomId);
+        }
         return sharedPref.getInt(roomId, 0);
+    }
+
+    protected static void clearTimeoutTimes(Context context, String roomId) {
+        SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.remove(roomId);
+        editor.apply();
+    }
+
+    protected static void disableX5(Context context, String roomId) {
+        SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
+        if (sharedPref.getLong(roomId + "disableX5", 0L) == 0) {
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.putLong(roomId + "disableX5", System.currentTimeMillis());
+            editor.apply();
+        }
+    }
+
+    protected static void clearDisableX5(Context context, String roomId) {
+        SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.remove(roomId + "disableX5");
+        editor.apply();
     }
 
     private static String getNetworkState(Context context) {
