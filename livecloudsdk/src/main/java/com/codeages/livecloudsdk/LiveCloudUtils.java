@@ -36,7 +36,7 @@ import static android.content.Context.MODE_PRIVATE;
 
 public class LiveCloudUtils {
 
-    private static final int SDKVersion = 1;
+    private static final int SDKVersion = 2;
 
     private static final String ALLOWED_CHARACTERS = "0123456789qwertyuiopasdfghjklzxcvbnm";
 
@@ -79,7 +79,13 @@ public class LiveCloudUtils {
         result.put("osName", "android");
         result.put("osVersion", android.os.Build.VERSION.RELEASE);
         result.put("network", getNetworkState(context));
-        result.put("appName", context.getApplicationInfo().processName);
+        try {
+            PackageManager pm = context.getPackageManager();
+            PackageInfo pi = pm.getPackageInfo(context.getPackageName(), 0);
+            result.put("appName", pi.applicationInfo.loadLabel(pm).toString());
+        } catch (PackageManager.NameNotFoundException e) {
+            result.put("appName", context.getApplicationInfo().processName);
+        }
         result.put("appVersion", getAppVersion(context));
         result.put("sdkVersion", SDKVersion);
         result.put("resolution", context.getResources().getDisplayMetrics().widthPixels + "x"
