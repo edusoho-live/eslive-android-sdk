@@ -84,6 +84,15 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         initTbs(context);
 
+        if (!isLive && QbSdk.getTbsVersion(context) < 45613) { // 倍速播放bug
+            QbSdk.forceSysWebView();
+            intent.putExtra("disableX5", true);
+
+            context.startActivity(intent);
+            progressDialog.dismiss();
+            return;
+        }
+
         String blacklistUrl = "https://livecloud-storage-sh.edusoho.net/metas/x5blacklist.json?ts=" + System.currentTimeMillis();
         LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) -> {
             if (successMsg != null) {
