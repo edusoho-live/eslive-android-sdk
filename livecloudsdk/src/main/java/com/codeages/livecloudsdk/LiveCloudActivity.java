@@ -58,7 +58,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     private Boolean isFullscreen = false;
     private Long enterTimestamp;
     private ContentLoadingProgressBar loadingView;
-    private LiveCloudLogUtils logUtils;
+    private LiveCloudLogger logger;
 
     private static final String JSInterface = "LiveCloudBridge";
 
@@ -134,19 +134,9 @@ public class LiveCloudActivity extends AppCompatActivity {
             if (enterDurationSecond() >= 10) {
                 int times = LiveCloudUtils.connectTimeout(this, roomId);
                 LiveCloudUtils.deleteCache(this);
-                Map<String, Object> logData = new HashMap<String, Object>() {
-                    {
-                        put("message", "[event] @(SDK.ConnectTimeout), " + roomId + "=" + times);
-                    }
-                };
-                logUtils.postLog("SDK.ConnectTimeout", logData);
+                logger.warn("SDK.ConnectTimeout", roomId + "=" + times, null);
             } else {
-                Map<String, Object> logData = new HashMap<String, Object>() {
-                    {
-                        put("message", "[event] @(SDK.NotConnect)");
-                    }
-                };
-                logUtils.postLog("SDK.NotConnect", logData);
+                logger.warn("SDK.NotConnect", null, null);
             }
             super.onBackPressed();
         }
@@ -172,16 +162,16 @@ public class LiveCloudActivity extends AppCompatActivity {
         loadingView = findViewById(R.id.loadingView);
         loadingView.show();
 
-        logUtils = new LiveCloudLogUtils(logUrl, url);
+        logger = new LiveCloudLogger(logUrl, url);
 
         createWebView();
 
         loadRoomURL();
 
-        logUtils.collectDeviceLog(deviceInfoMap());
+        logger.info("SDK.Enter", new JSONObject(deviceInfoMap()).toString(), deviceInfoMap());
 
         if (!getIntent().getBooleanExtra("isGrantedPermission", true)) {
-            logUtils.collectPermissionDeny();
+            logger.debug("SDK.PermissionDeny", null, null);
         }
 
         enterTimestamp = System.currentTimeMillis();
@@ -240,7 +230,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
             @Override
             public void onInstallFinish(int i) {
-                logUtils.collectX5Installed();
+                logger.info("SDK.X5Installed", null, null);
             }
 
             @Override
@@ -298,24 +288,14 @@ public class LiveCloudActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 super.onReceivedError(view, request, error);
-                Map<String, Object> logData = new HashMap<String, Object>() {
-                    {
-                        put("message", "[event] @(SDK.WebViewError), WebResourceError: " + error.getErrorCode() + " " + error.getDescription());
-                    }
-                };
-                logUtils.postLog("SDK.WebViewError", logData);
+                logger.debug("SDK.WebViewError", "WebResourceError: " + error.getErrorCode() + " " + error.getDescription(), null);
 //                String x5CrashInfo = WebView.getCrashExtraMessage(view.getContext());
             }
 
             @Override
             public void onReceivedSslError(WebView webView, SslErrorHandler sslErrorHandler, SslError sslError) {
                 sslErrorHandler.proceed();
-                Map<String, Object> logData = new HashMap<String, Object>() {
-                    {
-                        put("message", "[event] @(SDK.WebViewError), sslError: " + sslError.getPrimaryError() + " " + sslError.getUrl());
-                    }
-                };
-                logUtils.postLog("SDK.WebViewError", logData);
+                logger.debug("SDK.WebViewError", "sslError: " + sslError.getPrimaryError() + " " + sslError.getUrl(), null);
             }
         };
     }
@@ -369,12 +349,7 @@ public class LiveCloudActivity extends AppCompatActivity {
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
                 if (enterDurationSecond() < 10 && consoleMessage.messageLevel().equals(ConsoleMessage.MessageLevel.ERROR)) {
-                    Map<String, Object> logData = new HashMap<String, Object>() {
-                        {
-                            put("message", "[event] @(SDK.WebViewError), ConsoleMessage: " + consoleMessage.message());
-                        }
-                    };
-                    logUtils.postLog("SDK.WebViewError", logData);
+                    logger.error("SDK.WebViewError", "ConsoleMessage: " + consoleMessage.message(), null);
                 }
                 return super.onConsoleMessage(consoleMessage);
             }

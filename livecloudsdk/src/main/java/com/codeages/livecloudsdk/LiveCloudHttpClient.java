@@ -7,38 +7,23 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 public class LiveCloudHttpClient {
 
     public static void get(final String requestUrl, final OnRequestCallBack callBack) {
-        HttpThreadPoolUtils.execute(new Runnable() {
-            @Override
-            public void run() {
-                get(requestUrl, 3000, callBack);
-            }
-        });
+        get(requestUrl, 3000, callBack);
     }
 
     public static void get(final String requestUrl, int timeout, final OnRequestCallBack callBack) {
-        HttpThreadPoolUtils.execute(new Runnable() {
-            @Override
-            public void run() {
-                getRequest(requestUrl, timeout, callBack);
-            }
-        });
+        HttpThreadPoolUtils.execute(() -> getRequest(requestUrl, timeout, callBack));
     }
 
     public static void post(final String requestUrl, final String params, final OnRequestCallBack callBack) {
-        HttpThreadPoolUtils.execute(new Runnable() {
-            @Override
-            public void run() {
-                postRequest(requestUrl, params, callBack);
-            }
-        });
+        post(requestUrl, params, 3000, callBack);
+    }
+
+    public static void post(final String requestUrl, final String params, int timeout, final OnRequestCallBack callBack) {
+        HttpThreadPoolUtils.execute(() -> postRequest(requestUrl, params, timeout, callBack));
     }
 
     private static void getRequest(String requestUrl, int timeout, OnRequestCallBack callBack) {
@@ -96,7 +81,7 @@ public class LiveCloudHttpClient {
         }
     }
 
-    private static void postRequest(String requestUrl, String params, OnRequestCallBack callBack) {
+    private static void postRequest(String requestUrl, String params, int timeout, OnRequestCallBack callBack) {
         String successMessage = null;
         String errorMessage = null;
         InputStream inputStream = null;
@@ -105,8 +90,8 @@ public class LiveCloudHttpClient {
             URL url = new URL(requestUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
-            connection.setConnectTimeout(3000);
-            connection.setReadTimeout(3000);
+            connection.setConnectTimeout(timeout);
+            connection.setReadTimeout(timeout);
             connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
             connection.setRequestProperty("Accept", "application/json");
             // 设置是否从httpUrlConnection读入，默认情况下是true;
