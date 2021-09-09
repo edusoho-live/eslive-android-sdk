@@ -110,10 +110,10 @@ public class LiveCloudLogger {
     };
 
     private void postLog() {
-        int countNum = Math.min(logs.size() - 1, 100);
-        if (countNum == 0) {
+        if (logs.size() == 0) {
             return;
         }
+        int countNum = Math.min(logs.size(), 100);
         String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.getDefault())
                 .format(new Date());
         Map<String, Object> payload = new HashMap<String, Object>() {
@@ -122,7 +122,7 @@ public class LiveCloudLogger {
                 put("logs", logs.subList(0, countNum));
             }
         };
-        logs = logs.subList(countNum, logs.size() - 1);
+        logs = logs.subList(countNum, logs.size());
         LiveCloudHttpClient.post(mLogUrl, new JSONObject(payload).toString(), 6000, null);
     }
 }
