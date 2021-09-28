@@ -31,8 +31,17 @@ public class LiveCloudLogger {
 
 
     public LiveCloudLogger(String logUrl, String roomUrl) {
-        mLogUrl = logUrl;
+        mLogUrl = logUrl != null ? logUrl : "https://live-log.edusoho.com/collect";
         jwt = LiveCloudUtils.parseJwt(roomUrl);
+        logs = new ArrayList<>();
+    }
+
+    public LiveCloudLogger(Long roomId, Long userId, String logUrl) {
+        mLogUrl = logUrl != null ? logUrl : "https://live-log.edusoho.com/collect";
+        jwt = new HashMap<String, Object>(){{
+            put("rid", roomId);
+            put("uid", userId);
+        }};
         logs = new ArrayList<>();
     }
 
@@ -80,8 +89,8 @@ public class LiveCloudLogger {
         log.put("user", new HashMap<String, Object>() {
             {
                 put("id", jwt.get("uid"));
-                put("name", jwt.get("name"));
-                put("roles", new Object[]{jwt.get("role")});
+                put("name", jwt.get("name") != null ? jwt.get("name") : "");
+                put("roles", new Object[]{jwt.get("role") != null ? jwt.get("role") : ""});
             }
         });
         if (context != null) {

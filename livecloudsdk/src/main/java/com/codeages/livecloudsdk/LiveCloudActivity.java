@@ -74,8 +74,6 @@ public class LiveCloudActivity extends AppCompatActivity {
         intent.putExtra("roomId", roomId);
         if (options != null && options.get("logUrl") != null) {
             intent.putExtra("logUrl", (String) options.get("logUrl"));
-        } else {
-            intent.putExtra("logUrl", "https://live-log.edusoho.com/collect");
         }
 
         ProgressDialog progressDialog = ProgressDialog.show(context, "", "加载中", true, true);
