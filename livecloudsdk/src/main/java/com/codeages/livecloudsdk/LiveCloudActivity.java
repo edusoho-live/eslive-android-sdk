@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.widget.FrameLayout;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -59,6 +60,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     private Long enterTimestamp;
     private ContentLoadingProgressBar loadingView;
     private LiveCloudLogger logger;
+    private BackgroundMediaWebView backView;
 
     private static final String JSInterface = "LiveCloudBridge";
 
@@ -179,14 +181,14 @@ public class LiveCloudActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (webView != null) webView.onResume();
+        if (backView != null) {
+            backView.getPlayedTime(value -> {
+                destroyBackView();
+                webView.evaluateJavascript("liveCloudNativeEventCallback({name:'continuePlay',payload:{ts:" + value + "}})", null);
+            });
+        }
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (webView != null) webView.onPause();
-    }
 
     @Override
     protected void onDestroy() {
@@ -199,6 +201,19 @@ public class LiveCloudActivity extends AppCompatActivity {
             webView.clearHistory();
             webView.destroy();
             webView = null;
+        }
+        destroyBackView();
+    }
+
+    private void destroyBackView() {
+        if (backView != null) {
+            FrameLayout rootLayout = findViewById(R.id.viewLayout);
+            rootLayout.removeView(backView);
+            backView.removeJavascriptInterface(JSInterface);
+            backView.loadDataWithBaseURL(null, "", "text/html", "utf-8", null);
+            backView.clearHistory();
+            backView.destroy();
+            backView = null;
         }
     }
 
@@ -220,6 +235,8 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     private void createWebView() {
+//        android.webkit.WebView.setWebContentsDebuggingEnabled(true);
+//        WebView.setWebContentsDebuggingEnabled(true);
         QbSdk.setTbsListener(new TbsListener() {
             @Override
             public void onDownloadFinish(int i) {
@@ -380,8 +397,17 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     @JavascriptInterface
     public void exit() {
-        runOnUiThread(() -> finish());
+        runOnUiThread(this::finish);
+    }
 
+    @JavascriptInterface
+    public void playBackgroundStream(String params) {
+        runOnUiThread(() -> {
+            FrameLayout rootLayout = findViewById(R.id.viewLayout);
+            backView = new BackgroundMediaWebView(this, params);
+            rootLayout.addView(backView);
+            backView.loadUrl("file:///android_asset/index.html");
+        });
     }
 
     private void setWindowFullScreen() {

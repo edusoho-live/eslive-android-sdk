@@ -36,7 +36,7 @@ import static android.content.Context.MODE_PRIVATE;
 
 public class LiveCloudUtils {
 
-    private static final int SDKVersion = 2;
+    private static final int SDKVersion = 3;
 
     private static final String ALLOWED_CHARACTERS = "0123456789qwertyuiopasdfghjklzxcvbnm";
 
