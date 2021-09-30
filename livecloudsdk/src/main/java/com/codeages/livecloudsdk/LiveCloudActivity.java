@@ -84,7 +84,8 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         initTbs(context);
 
-        if (!isLive && QbSdk.getTbsVersion(context) < 45613) { // 倍速播放bug
+        if ((!isLive && QbSdk.getTbsVersion(context) < 45613) ||    // 倍速播放bug
+                (isLive && QbSdk.getTbsVersion(context) < 45000)) { // 直播
             QbSdk.forceSysWebView();
             intent.putExtra("disableX5", true);
 
@@ -113,7 +114,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-            if (LiveCloudUtils.getTimeoutTimes(context, roomId) > 3) {
+            if (LiveCloudUtils.getTimeoutTimes(context, roomId) > 2) {
                 QbSdk.forceSysWebView();
                 intent.putExtra("disableX5", true);
                 LiveCloudUtils.disableX5(context, roomId);
@@ -168,7 +169,9 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         loadRoomURL();
 
-        logger.info("SDK.Enter", new JSONObject(deviceInfoMap()).toString(), deviceInfoMap());
+        logger.info("SDK.Enter", new JSONObject(deviceInfoMap()).toString(), new HashMap<String, Object>() {{
+            put("device", deviceInfoMap());
+        }});
 
         if (!getIntent().getBooleanExtra("isGrantedPermission", true)) {
             logger.debug("SDK.PermissionDeny", null, null);

@@ -16,14 +16,19 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 import java.util.Map;
 
+import static com.codeages.livecloudsdk.LiveCloudSDK.FetchFileError;
+
 public class DownloadReplayListener extends DownloadListener4WithSpeed {
     private final ReplayListener mReplayListener;
     private final ReplayMetas    mReplayMetas;
     private final int            mIndex;
+    private       int            mDownloadCount = 0;
+    private       String         mUser;
 
-    public DownloadReplayListener(ReplayMetas replayMetas, int index, ReplayListener replayListener) {
+    public DownloadReplayListener(ReplayMetas replayMetas, int index, String user, ReplayListener replayListener) {
         this.mReplayMetas = replayMetas;
         this.mIndex = index;
+        this.mUser = user;
         this.mReplayListener = replayListener;
     }
 
@@ -74,7 +79,11 @@ public class DownloadReplayListener extends DownloadListener4WithSpeed {
     public void taskEnd(@NotNull DownloadTask task, @NotNull EndCause cause, Exception realCause,
                         @NotNull SpeedCalculator taskSpeed) {
         if (cause == EndCause.ERROR) {
+            mDownloadCount++;
             OkDownload.with().breakpointStore().remove(task.getId());
+            if (mDownloadCount == 10) {
+                new LiveCloudLogger(Long.parseLong(mReplayMetas.getRoomId() + ""), Long.parseLong(mUser), null).error(FetchFileError, task.getUrl(), null);
+            }
         }
         LogUtils.i(task.getUrl() + "EndCause:" + cause.name());
     }

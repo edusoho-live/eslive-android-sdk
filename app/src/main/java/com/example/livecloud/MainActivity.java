@@ -31,7 +31,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        LiveCloudSDK.init(getApplicationContext());
 
         Button enter             = findViewById(R.id.button);
         Button btnDownloadReplay = findViewById(R.id.btn_download);

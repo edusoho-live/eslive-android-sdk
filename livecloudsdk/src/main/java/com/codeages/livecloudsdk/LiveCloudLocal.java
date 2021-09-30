@@ -8,15 +8,30 @@ import com.codeages.livecloudsdk.bean.ReplayMetas;
 import com.tencent.mmkv.MMKV;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
+import rx.Subscription;
 
 public class LiveCloudLocal {
 
-    public static final int    LOCAL_HTTP_PORT             = 20100;
-    public static final String LIVE_CLOUD_REPLAY_PATH      = "/live_cloud_replay";
-    public static final String LIVE_CLOUD_PLAYER_PATH      = "/live_cloud_player";
-    public static final String PLAYER_VERSION              = "player_version";
-    public static final String LIVE_CLOUD_REPLAY_DB        = "live_cloud_replay_db";
-    public static final String LIVE_CLOUD_REPLAY_METAS_URL = "live_cloud_replay_metas_url";
+    public static final  int                       LOCAL_HTTP_PORT             = 20100;
+    public static final  String                    LIVE_CLOUD_REPLAY_PATH      = "/live_cloud_replay";
+    public static final  String                    LIVE_CLOUD_PLAYER_PATH      = "/live_cloud_player";
+    public static final  String                    PLAYER_VERSION              = "player_version";
+    public static final  String                    LIVE_CLOUD_REPLAY_DB        = "live_cloud_replay_db";
+    public static final  String                    LIVE_CLOUD_REPLAY_METAS_URL = "live_cloud_replay_metas_url";
+    private static final Map<String, Subscription> mSubCache                   = new HashMap<>();
+
+    public static void putSub(String key, Subscription sub) {
+        mSubCache.put(key, sub);
+    }
+
+    public static Subscription popSub(String key) {
+        Subscription subscription = mSubCache.get(key);
+        mSubCache.remove(key);
+        return subscription;
+    }
 
     public static String getPlayerVersion() {
         MMKV kv = MMKV.defaultMMKV();

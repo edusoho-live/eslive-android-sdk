@@ -1,5 +1,6 @@
 package com.example.livecloud;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
@@ -7,6 +8,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.codeages.livecloudsdk.LiveCloudSDK;
@@ -14,7 +16,9 @@ import com.codeages.livecloudsdk.ReplayListener;
 import com.codeages.livecloudsdk.bean.ReplayError;
 import com.codeages.livecloudsdk.bean.ReplayMetas;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 
 public class DownloadActivity extends AppCompatActivity {
 
@@ -24,6 +28,7 @@ public class DownloadActivity extends AppCompatActivity {
     private static final int    USER_ID   = 8;
     private static final String USER_NAME = "Jesse";
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -41,9 +46,8 @@ public class DownloadActivity extends AppCompatActivity {
 
         btnDownloadReplay.setOnClickListener(v -> {
             String downloadUrl = "https://live-dev.edusoho.cn/apiapp/replay/getOfflineMetas";
-            String token       = "eyJraWQiOiJmbHZfc2VsZl9hbGl5dW4iLCJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1aWQiOjkwMDAwMDAwMDAwMDAwMjIsInJvbGUiOiJ2aWV3ZXIiLCJpc3MiOiJsaXZlIGNsaWVudCBhcGkiLCJuYW1lIjoidGVzdC0yMiIsInJpZCI6MjI5NTYsInR5cGUiOiJsYW5kc2NhcGUiLCJleHAiOjE2NDA5NjY0MDB9.fTUuM8s7F5lu3LqTAha_GE1hQgfTrJvwcODvMhlwKmQ";
             new LiveCloudSDK.Builder()
-                    .setToken(token)
+                    .setToken(getToken())
                     .setUserId(USER_ID + "")
                     .setUsername(USER_NAME)
                     .setKey(KEY + "")
@@ -102,6 +106,7 @@ public class DownloadActivity extends AppCompatActivity {
         btnPause.setOnClickListener(v -> {
             new LiveCloudSDK.Builder()
                     .setKey(KEY + "")
+                    .setUserId(USER_ID + "")
                     .setReplayListener(new ReplayListener() {
                         @Override
                         public void onError(ReplayError error) {
@@ -115,6 +120,7 @@ public class DownloadActivity extends AppCompatActivity {
         btnDeleteReplay.setOnClickListener(v -> {
             new LiveCloudSDK.Builder()
                     .setKey(KEY + "")
+                    .setUserId(USER_ID + "")
                     .setReplayListener(new ReplayListener() {
                         @Override
                         public void onError(ReplayError error) {
@@ -186,5 +192,18 @@ public class DownloadActivity extends AppCompatActivity {
         return count;
     }
 
-
+    private String getToken() {
+        StringBuilder result = new StringBuilder();
+        try {
+            InputStreamReader inputReader = new InputStreamReader(getResources().getAssets().open("token.txt"));
+            BufferedReader    bufReader   = new BufferedReader(inputReader);
+            String            line        = "";
+            while ((line = bufReader.readLine()) != null) {
+                result.append(line);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result.toString();
+    }
 }

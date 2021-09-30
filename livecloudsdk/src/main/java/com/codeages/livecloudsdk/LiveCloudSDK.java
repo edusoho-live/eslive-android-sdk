@@ -24,24 +24,36 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import rx.Emitter;
 import rx.Observable;
 import rx.Subscriber;
+import rx.Subscription;
 import rx.functions.Action1;
 import rx.functions.Func1;
 
 public class LiveCloudSDK {
 
-    private String         mKey;
-    private String         mDownloadUrl;
-    private String         mToken;
-    private String         mUserId;
-    private String         mUsername;
-    private ReplayListener mReplayListener;
+    public static final String         FetchStarted   = "OfflineReplay.FetchStarted";
+    public static final String         FetchCancelled = "OfflineReplay.FetchCancelled";
+    public static final String         FetchFinished  = "OfflineReplay.FetchFinished";
+    public static final String         Deleted        = "OfflineReplay.Deleted";
+    public static final String         DeletedAll     = "OfflineReplay.DeletedAll";
+    public static final String         FetchFailed    = "OfflineReplay.FetchFailed";
+    public static final String         FetchFileError = "OfflineReplay.FetchFileError";
+    public static final String         Enter          = "OfflineReplay.Enter";
+    public static final String         WebViewError   = "OfflineReplay.WebViewError";
+    private final       String         mKey;
+    private final       String         mDownloadUrl;
+    private final       String         mToken;
+    private final       String         mUserId;
+    private final       String         mUsername;
+    private final       ReplayListener mReplayListener;
 
     private LiveCloudSDK(Builder builder) {
         this.mKey = builder.key;
@@ -54,7 +66,7 @@ public class LiveCloudSDK {
 
     public static void init(Context context) {
         MMKV.initialize(context);
-        DownloadDispatcher.setMaxParallelRunningCount(1);
+        DownloadDispatcher.setMaxParallelRunningCount(5);
         LogUtils.getConfig().setGlobalTag("LiveCloudSDK");
         LogUtils.getConfig().setBorderSwitch(true);
     }
@@ -77,7 +89,7 @@ public class LiveCloudSDK {
                 + "&showChat=" + replayMetas.getShowChat()
                 + "&duration=" + replayMetas.getDuration()
                 + "&proxyUrl=127.0.0.1:" + LiveCloudLocal.LOCAL_HTTP_PORT + "/live_cloud_replay/" + replayMetas.getRoomId();
-        LiveReplayActivity.launch(context, playUrl);
+        LiveReplayActivity.launch(context, playUrl, replayMetas.getRoomId() + "", mUserId);
     }
 
     /**
@@ -113,9 +125,12 @@ public class LiveCloudSDK {
      */
     public void cancelFetchReplay() {
         ReplayMetas replayMetas = LiveCloudLocal.getReplay(mKey);
+        unsubscribe();
         if (replayMetas != null) {
+            LogUtils.d("stop", "cancelFetchReplay: ");
             replayMetas.setStatus(ReplayInfo.Status.PAUSE.ordinal());
             LiveCloudLocal.setReplay(mKey, replayMetas);
+            new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).info(FetchCancelled, "取消下载回放缓存", null);
         }
     }
 
@@ -124,10 +139,12 @@ public class LiveCloudSDK {
      */
     public void deleteReplay() {
         ReplayMetas replayMetas = LiveCloudLocal.getReplay(mKey);
+        unsubscribe();
         if (replayMetas != null) {
             int roomId = replayMetas.getRoomId();
             FileUtils.deleteAllInDir(LiveCloudLocal.getReplayDirectory(roomId + ""));
             FileUtils.delete(LiveCloudLocal.getReplayDirectory(roomId + ""));
+            new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).info(Deleted, "删除已下载回放缓存", null);
         } else {
             mReplayListener.onError(new ReplayError(ReplayError.NOT_EXIST));
         }
@@ -237,7 +254,7 @@ public class LiveCloudSDK {
                           downloadTask.enqueue(downloadPlayerListener);
                       } else if (taskStatus == StatusUtil.Status.COMPLETED) {
                           index.getAndIncrement();
-                          if (index.get() == playerInfo.getUrls().size() && getFileCounts(LiveCloudLocal.getPlayerDirectory()) == playerInfo.getUrls().size()) {
+                          if (index.get() == playerInfo.getUrls().size()) {
                               mReplayListener.onPlayerFinish(replayMetas);
                               LiveCloudLocal.setPlayerVersion(playerInfo.getVersion());
                               if (sign) fetchReplay(replayMetaItems, replayMetas);
@@ -257,35 +274,56 @@ public class LiveCloudSDK {
             }
         }
         mReplayListener.onReady(replayMetas, downloadTasks.size());
+        new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).info(FetchStarted, "开始下载回放缓存", null);
         int           taskSum = downloadTasks.size();
         AtomicInteger index   = new AtomicInteger();
         LiveCloudLocal.setReplayStatus(mKey, ReplayInfo.Status.DOWNLOADING.ordinal());
-        Observable.interval(200, TimeUnit.MILLISECONDS)
-                  .flatMap((Func1<Object, Observable<Boolean>>) o -> Observable.create((Action1<Emitter<Boolean>>) emitter -> emitter.onNext(true), Emitter.BackpressureMode.BUFFER))
-                  .takeWhile(isCancel -> {
-                      int status = LiveCloudLocal.getReplayStatus(mKey);
-                      return index.get() < taskSum && status == ReplayInfo.Status.DOWNLOADING.ordinal();
-                  })
-                  .compose(RxUtils.switch2Main())
-                  .subscribe(Void -> {
-                      DownloadTask      downloadTask = downloadTasks.get(index.get());
-                      StatusUtil.Status taskStatus   = StatusUtil.getStatus(downloadTask);
-                      if (taskStatus == StatusUtil.Status.UNKNOWN || taskStatus == StatusUtil.Status.IDLE) {
-                          DownloadReplayListener downloadReplayListener = new DownloadReplayListener(replayMetas, index.get() + 1, mReplayListener);
-                          downloadTask.enqueue(downloadReplayListener);
-                      } else if (taskStatus == StatusUtil.Status.COMPLETED) {
-                          index.getAndIncrement();
-                          try {
-                              if (index.get() == taskSum && getFileCounts(LiveCloudLocal.getReplayDirectory(replayMetas.getRoomId() + "")) == taskSum) {
-                                  mReplayListener.onFinish(replayMetas);
-                                  LiveCloudLocal.setReplayStatus(mKey, ReplayInfo.Status.COMPLETED.ordinal());
-                                  LiveCloudLocal.setMetasUrl(mKey, getMetasUrl(replayMetaItems));
-                              }
-                          } catch (Exception ex) {
-                              LogUtils.e(ex.getMessage());
-                          }
-                      }
-                  });
+        Subscription subscription = Observable.interval(500, TimeUnit.MILLISECONDS)
+                                              .flatMap((Func1<Object, Observable<Boolean>>) o -> Observable.create((Action1<Emitter<Boolean>>) emitter -> emitter.onNext(true), Emitter.BackpressureMode.BUFFER))
+                                              .takeWhile(isCancel -> {
+                                                  LogUtils.d("stop", "takeWhile: ");
+                                                  int status = LiveCloudLocal.getReplayStatus(mKey);
+                                                  return index.get() < taskSum && status == ReplayInfo.Status.DOWNLOADING.ordinal();
+                                              })
+                                              .compose(RxUtils.switch2Main())
+                                              .subscribe(new Subscriber<Boolean>() {
+                                                  @Override
+                                                  public void onCompleted() {
+
+                                                  }
+
+                                                  @Override
+                                                  public void onError(Throwable e) {
+                                                      LogUtils.d("stop", "onError: ");
+                                                      Map<String, Object> errorMap = new HashMap<>();
+                                                      errorMap.put("error", e);
+                                                      new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).error(FetchFailed, "下载回放缓存失败", errorMap);
+                                                  }
+
+                                                  @Override
+                                                  public void onNext(Boolean aBoolean) {
+                                                      LogUtils.d("stop", "onNext: ");
+                                                      DownloadTask      downloadTask = downloadTasks.get(index.get());
+                                                      StatusUtil.Status taskStatus   = StatusUtil.getStatus(downloadTask);
+                                                      if (taskStatus == StatusUtil.Status.UNKNOWN || taskStatus == StatusUtil.Status.IDLE) {
+                                                          DownloadReplayListener downloadReplayListener = new DownloadReplayListener(replayMetas, index.get() + 1, mUserId, mReplayListener);
+                                                          downloadTask.enqueue(downloadReplayListener);
+                                                      } else if (taskStatus == StatusUtil.Status.COMPLETED) {
+                                                          index.getAndIncrement();
+                                                          try {
+                                                              if (index.get() == taskSum) {
+                                                                  new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).info(FetchFinished, "完成下载回放缓存", null);
+                                                                  LiveCloudLocal.setReplayStatus(mKey, ReplayInfo.Status.COMPLETED.ordinal());
+                                                                  LiveCloudLocal.setMetasUrl(mKey, getMetasUrl(replayMetaItems));
+                                                                  mReplayListener.onFinish(replayMetas);
+                                                              }
+                                                          } catch (Exception ex) {
+                                                              LogUtils.e(ex.getMessage());
+                                                          }
+                                                      }
+                                                  }
+                                              });
+        LiveCloudLocal.putSub(mKey, subscription);
     }
 
     private String getMetasUrl(List<ReplayMetaItem> replayMetaItems) {
@@ -297,21 +335,6 @@ public class LiveCloudSDK {
             }
         }
         return metasUrl;
-    }
-
-    private long getFileCounts(File dir) {
-        long   count = 0;
-        File[] files = dir.listFiles();
-        if (files != null) {
-            for (File f : files) {
-                if (f.isFile()) {
-                    count++;
-                } else if (f.isDirectory()) {
-                    count = count + getFileCounts(f);
-                }
-            }
-        }
-        return count;
     }
 
     private String getBaseReplayUri(String type, ReplayMetas replayMetas) {
@@ -331,6 +354,13 @@ public class LiveCloudSDK {
                 .setConnectionCount(1)
                 .setBreakpointEnabled(false)
                 .build();
+    }
+
+    private void unsubscribe() {
+        Subscription sub = LiveCloudLocal.popSub(mKey);
+        if (sub != null && !sub.isUnsubscribed()) {
+            sub.unsubscribe();
+        }
     }
 
     public static class Builder {

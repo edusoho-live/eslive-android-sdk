@@ -41,10 +41,16 @@ public class LiveReplayActivity extends AppCompatActivity {
     private              Boolean                   connect      = false;
     private              Boolean                   isFullscreen = false;
     private              ContentLoadingProgressBar loadingView;
+    private              long                      startTimePoint;
+    private              String                    mUrl;
+    private              String                    mRoomId;
+    private              String                    mUserId;
 
-    public static void launch(Context context, String url) {
+    public static void launch(Context context, String url, String roomId, String userId) {
         Intent intent = new Intent(context, LiveReplayActivity.class);
         intent.putExtra("url", url);
+        intent.putExtra("roomId", roomId);
+        intent.putExtra("UserId", userId);
         context.startActivity(intent);
     }
 
@@ -59,14 +65,17 @@ public class LiveReplayActivity extends AppCompatActivity {
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        String url = getIntent().getStringExtra("url");
+        mUrl = getIntent().getStringExtra("url");
+        mRoomId = getIntent().getStringExtra("roomId");
+        mUserId = getIntent().getStringExtra("UserId");
 
         loadingView = findViewById(R.id.loadingView);
         loadingView.show();
 
         createWebView();
-
-        loadRoomURL(url);
+        new LiveCloudLogger(Long.parseLong(mRoomId), Long.parseLong(mUserId), null).info(LiveCloudSDK.Enter, "进入观看回放缓存", null);
+        startTimePoint = System.currentTimeMillis();
+        loadRoomURL(mUrl);
 
     }
 
@@ -186,6 +195,9 @@ public class LiveReplayActivity extends AppCompatActivity {
 
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                if ((System.currentTimeMillis() - startTimePoint) / 1000 < 10) {
+                    new LiveCloudLogger(Long.parseLong(mRoomId), Long.parseLong(mUserId), null).info(LiveCloudSDK.WebViewError, "观看回放缓存Web报错", null);
+                }
                 return super.onConsoleMessage(consoleMessage);
             }
         };
