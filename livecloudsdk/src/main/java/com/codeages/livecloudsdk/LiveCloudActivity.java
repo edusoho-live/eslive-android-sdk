@@ -30,6 +30,7 @@ import com.tencent.smtt.export.external.interfaces.SslError;
 import com.tencent.smtt.export.external.interfaces.SslErrorHandler;
 import com.tencent.smtt.export.external.interfaces.WebResourceError;
 import com.tencent.smtt.export.external.interfaces.WebResourceRequest;
+import com.tencent.smtt.export.external.interfaces.WebResourceResponse;
 import com.tencent.smtt.sdk.QbSdk;
 import com.tencent.smtt.sdk.TbsListener;
 import com.tencent.smtt.sdk.WebChromeClient;
@@ -315,6 +316,18 @@ public class LiveCloudActivity extends AppCompatActivity {
                 sslErrorHandler.proceed();
                 logger.debug("SDK.WebViewError", "sslError: " + sslError.getPrimaryError() + " " + sslError.getUrl(), null);
             }
+
+            @Override
+            public void onReceivedHttpError(WebView webView, WebResourceRequest webResourceRequest, WebResourceResponse webResourceResponse) {
+                super.onReceivedHttpError(webView, webResourceRequest, webResourceResponse);
+                logger.debug("SDK.WebViewError", "httpError: " + webResourceResponse.getStatusCode() + " " + webResourceResponse.getReasonPhrase(), null);
+            }
+
+            @Override
+            public void onReceivedError(WebView webView, int i, String s, String s1) {
+                super.onReceivedError(webView, i, s, s1);
+                logger.debug("SDK.WebViewError", "WebResourceError: " + i + " " + s + " " + s1, null);
+            }
         };
     }
 
@@ -366,9 +379,9 @@ public class LiveCloudActivity extends AppCompatActivity {
 
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                if (enterDurationSecond() < 10 && consoleMessage.messageLevel().equals(ConsoleMessage.MessageLevel.ERROR)) {
-                    logger.error("SDK.WebViewError", "ConsoleMessage: " + consoleMessage.message(), null);
-                }
+//                if (enterDurationSecond() < 10 && consoleMessage.messageLevel().equals(ConsoleMessage.MessageLevel.ERROR)) {
+//                    logger.error("SDK.WebViewError", "ConsoleMessage: " + consoleMessage.message(), null);
+//                }
                 return super.onConsoleMessage(consoleMessage);
             }
         };
