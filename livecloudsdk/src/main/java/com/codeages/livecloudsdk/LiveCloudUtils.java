@@ -36,7 +36,7 @@ import static android.content.Context.MODE_PRIVATE;
 
 public class LiveCloudUtils {
 
-    private static final int SDKVersion = 3;
+    private static final int SDKVersion = 4;
 
     private static final String ALLOWED_CHARACTERS = "0123456789qwertyuiopasdfghjklzxcvbnm";
 
@@ -58,14 +58,17 @@ public class LiveCloudUtils {
             return new HashMap<>();
         }
 
+        String header = new String(android.util.Base64.decode(chunks[0], android.util.Base64.URL_SAFE));
         String payload = new String(android.util.Base64.decode(chunks[1], android.util.Base64.URL_SAFE));
         try {
-            JSONObject json = new JSONObject(payload);
+            JSONObject hJson = new JSONObject(header);
+            JSONObject pJson = new JSONObject(payload);
             Map<String, Object> result = new HashMap<>();
-            result.put("rid", json.get("rid"));
-            result.put("role", json.get("role"));
-            result.put("uid", json.get("uid"));
-            result.put("name", json.get("name"));
+            result.put("kid", hJson.get("kid"));
+            result.put("rid", pJson.get("rid"));
+            result.put("role", pJson.get("role"));
+            result.put("uid", pJson.get("uid"));
+            result.put("name", pJson.get("name"));
             return result;
         } catch (JSONException e) {
             e.printStackTrace();

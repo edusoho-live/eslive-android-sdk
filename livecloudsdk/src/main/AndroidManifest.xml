@@ -27,15 +27,6 @@
             android:theme="@style/LiveCloudTheme"
             android:windowSoftInputMode="stateHidden|adjustResize" />
 
-        <activity
-            android:name=".LiveReplayActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:exported="true"
-            android:hardwareAccelerated="true"
-            android:screenOrientation="portrait"
-            android:theme="@style/LiveCloudTheme"
-            android:windowSoftInputMode="stateHidden|adjustResize" />
-
         <service
             android:name="com.tencent.smtt.export.external.DexClassLoaderProviderService"
             android:label="dexopt"

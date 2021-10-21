@@ -54,6 +54,7 @@ public class LiveCloudSDK {
     private final       String         mUserId;
     private final       String         mUsername;
     private final       ReplayListener mReplayListener;
+    public LiveCloudLogger logger;
 
     private LiveCloudSDK(Builder builder) {
         this.mKey = builder.key;
@@ -82,6 +83,8 @@ public class LiveCloudSDK {
             mReplayListener.onError(new ReplayError(ReplayError.NOT_EXIST));
             return;
         }
+
+        logger = LiveCloudLogger.getInstance(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), this.mUsername, null);
         String playUrl = "http://127.0.0.1:" + LiveCloudLocal.LOCAL_HTTP_PORT + "/live_cloud_player/index.html#/replay/22956?offline=1&roomName=" + replayMetas.getRoomName()
                 + "&metasUrl=" + LiveCloudLocal.getMetasUrl(mKey)
                 + "&userId=" + mUserId
@@ -89,7 +92,7 @@ public class LiveCloudSDK {
                 + "&showChat=" + replayMetas.getShowChat()
                 + "&duration=" + replayMetas.getDuration()
                 + "&proxyUrl=127.0.0.1:" + LiveCloudLocal.LOCAL_HTTP_PORT + "/live_cloud_replay/" + replayMetas.getRoomId();
-        LiveReplayActivity.launch(context, playUrl, replayMetas.getRoomId() + "", mUserId);
+        LiveCloudActivity.launchOffline(context, playUrl, replayMetas.getRoomId() + "", mUserId, this.mUsername);
     }
 
     /**
@@ -130,7 +133,7 @@ public class LiveCloudSDK {
             LogUtils.d("stop", "cancelFetchReplay: ");
             replayMetas.setStatus(ReplayInfo.Status.PAUSE.ordinal());
             LiveCloudLocal.setReplay(mKey, replayMetas);
-            new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).info(FetchCancelled, "取消下载回放缓存", null);
+            logger.info(FetchCancelled, "取消下载回放缓存", null);
         }
     }
 
@@ -144,7 +147,7 @@ public class LiveCloudSDK {
             int roomId = replayMetas.getRoomId();
             FileUtils.deleteAllInDir(LiveCloudLocal.getReplayDirectory(roomId + ""));
             FileUtils.delete(LiveCloudLocal.getReplayDirectory(roomId + ""));
-            new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).info(Deleted, "删除已下载回放缓存", null);
+            logger.info(Deleted, "删除已下载回放缓存", null);
         } else {
             mReplayListener.onError(new ReplayError(ReplayError.NOT_EXIST));
         }
@@ -274,7 +277,7 @@ public class LiveCloudSDK {
             }
         }
         mReplayListener.onReady(replayMetas, downloadTasks.size());
-        new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).info(FetchStarted, "开始下载回放缓存", null);
+        logger.info(FetchStarted, "开始下载回放缓存", null);
         int           taskSum = downloadTasks.size();
         AtomicInteger index   = new AtomicInteger();
         LiveCloudLocal.setReplayStatus(mKey, ReplayInfo.Status.DOWNLOADING.ordinal());
@@ -297,7 +300,7 @@ public class LiveCloudSDK {
                                                       LogUtils.d("stop", "onError: ");
                                                       Map<String, Object> errorMap = new HashMap<>();
                                                       errorMap.put("error", e);
-                                                      new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).error(FetchFailed, "下载回放缓存失败", errorMap);
+                                                      logger.error(FetchFailed, "下载回放缓存失败", errorMap);
                                                   }
 
                                                   @Override
@@ -306,13 +309,13 @@ public class LiveCloudSDK {
                                                       DownloadTask      downloadTask = downloadTasks.get(index.get());
                                                       StatusUtil.Status taskStatus   = StatusUtil.getStatus(downloadTask);
                                                       if (taskStatus == StatusUtil.Status.UNKNOWN || taskStatus == StatusUtil.Status.IDLE) {
-                                                          DownloadReplayListener downloadReplayListener = new DownloadReplayListener(replayMetas, index.get() + 1, mUserId, mReplayListener);
+                                                          DownloadReplayListener downloadReplayListener = new DownloadReplayListener(replayMetas, index.get() + 1, mUserId, mUsername, mReplayListener);
                                                           downloadTask.enqueue(downloadReplayListener);
                                                       } else if (taskStatus == StatusUtil.Status.COMPLETED) {
                                                           index.getAndIncrement();
                                                           try {
                                                               if (index.get() == taskSum) {
-                                                                  new LiveCloudLogger(Long.parseLong(replayMetas.getRoomId() + ""), Long.parseLong(mUserId), null).info(FetchFinished, "完成下载回放缓存", null);
+                                                                  logger.info(FetchFinished, "完成下载回放缓存", null);
                                                                   LiveCloudLocal.setReplayStatus(mKey, ReplayInfo.Status.COMPLETED.ordinal());
                                                                   LiveCloudLocal.setMetasUrl(mKey, getMetasUrl(replayMetaItems));
                                                                   mReplayListener.onFinish(replayMetas);

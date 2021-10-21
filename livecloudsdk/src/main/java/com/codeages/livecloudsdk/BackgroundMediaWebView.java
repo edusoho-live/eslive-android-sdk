@@ -11,10 +11,16 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 
 
+interface TimeUpdateListener {
+    void timeChange();
+}
+
 public class BackgroundMediaWebView extends WebView {
     private static final String JSInterface = "LiveCloudBridge";
 
     private String playInfo;
+
+    public TimeUpdateListener timeUpdateListener;
 
     @SuppressLint("SetJavaScriptEnabled")
     public BackgroundMediaWebView(Context context, String params) {
@@ -50,6 +56,11 @@ public class BackgroundMediaWebView extends WebView {
     public void connect() {
         ((Activity) getContext()).runOnUiThread(()->
                 evaluateJavascript("liveCloudNativeEventCallback(" + playInfo + ")", null));
+    }
+
+    @JavascriptInterface
+    public void timeUpdate() {
+        ((Activity) getContext()).runOnUiThread(()-> timeUpdateListener.timeChange());
     }
 
     public void getPlayedTime(ValueCallback<String> resultCallback) {

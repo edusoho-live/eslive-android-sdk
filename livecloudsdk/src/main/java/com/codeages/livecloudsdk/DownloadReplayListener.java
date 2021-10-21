@@ -23,12 +23,14 @@ public class DownloadReplayListener extends DownloadListener4WithSpeed {
     private final ReplayMetas    mReplayMetas;
     private final int            mIndex;
     private       int            mDownloadCount = 0;
-    private       String         mUser;
+    private       String         mUserId;
+    private       String         mUserName;
 
-    public DownloadReplayListener(ReplayMetas replayMetas, int index, String user, ReplayListener replayListener) {
+    public DownloadReplayListener(ReplayMetas replayMetas, int index, String userId, String userName, ReplayListener replayListener) {
         this.mReplayMetas = replayMetas;
         this.mIndex = index;
-        this.mUser = user;
+        this.mUserId = userId;
+        this.mUserName = userName;
         this.mReplayListener = replayListener;
     }
 
@@ -82,7 +84,7 @@ public class DownloadReplayListener extends DownloadListener4WithSpeed {
             mDownloadCount++;
             OkDownload.with().breakpointStore().remove(task.getId());
             if (mDownloadCount == 10) {
-                new LiveCloudLogger(Long.parseLong(mReplayMetas.getRoomId() + ""), Long.parseLong(mUser), null).error(FetchFileError, task.getUrl(), null);
+                LiveCloudLogger.getInstance(Long.parseLong(mReplayMetas.getRoomId() + ""), Long.parseLong(mUserId), mUserName, null).error(FetchFileError, task.getUrl(), null);
             }
         }
         LogUtils.i(task.getUrl() + "EndCause:" + cause.name());

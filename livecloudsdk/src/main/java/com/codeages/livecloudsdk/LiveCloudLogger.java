@@ -18,6 +18,7 @@ public class LiveCloudLogger {
     public static final String WARN = "WARN";
     public static final String ERROR = "ERROR";
 
+    private static LiveCloudLogger logger;
 
     private final String mLogUrl;
 
@@ -29,18 +30,36 @@ public class LiveCloudLogger {
 
     private long logId = 1;
 
+    public static LiveCloudLogger getInstance(String logUrl, String roomUrl) {
+        if (null == logger) {
+            synchronized (LiveCloudLogger.class) {
+                logger = new LiveCloudLogger(logUrl, roomUrl);
+            }
+        }
+        return logger;
+    }
 
-    public LiveCloudLogger(String logUrl, String roomUrl) {
+    public static LiveCloudLogger getInstance(Long roomId, Long userId, String userName, String logUrl) {
+        if (null == logger) {
+            synchronized (LiveCloudLogger.class) {
+                logger = new LiveCloudLogger(roomId, userId, userName, logUrl);
+            }
+        }
+        return logger;
+    }
+
+    private LiveCloudLogger(String logUrl, String roomUrl) {
         mLogUrl = logUrl != null ? logUrl : "https://live-log.edusoho.com/collect";
         jwt = LiveCloudUtils.parseJwt(roomUrl);
         logs = new ArrayList<>();
     }
 
-    public LiveCloudLogger(Long roomId, Long userId, String logUrl) {
+    private LiveCloudLogger(Long roomId, Long userId, String userName, String logUrl) {
         mLogUrl = logUrl != null ? logUrl : "https://live-log.edusoho.com/collect";
         jwt = new HashMap<String, Object>(){{
             put("rid", roomId);
             put("uid", userId);
+            put("name", userName);
         }};
         logs = new ArrayList<>();
     }
