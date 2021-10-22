@@ -64,7 +64,6 @@ public class LiveCloudActivity extends AppCompatActivity {
     private Long enterTimestamp;
     private ContentLoadingProgressBar loadingView;
     private LiveCloudLogger logger;
-    private BackgroundMediaWebView backView;
 
     private static final String JSInterface = "LiveCloudBridge";
 
@@ -234,19 +233,6 @@ public class LiveCloudActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (backView != null) {
-            backView.getPlayedTime(value -> {
-                destroyBackView();
-                if (x5WebView != null) {
-                    x5WebView.evaluateJavascript("liveCloudNativeEventCallback({name:'continuePlay',payload:{ts:" + value + "}})", null);
-                }
-            });
-        }
-    }
-
 
     @Override
     protected void onDestroy() {
@@ -269,19 +255,6 @@ public class LiveCloudActivity extends AppCompatActivity {
             nativeWebView = null;
         }
         HttpServerFactory.getInstance().stop();
-        destroyBackView();
-    }
-
-    private void destroyBackView() {
-        if (backView != null) {
-            FrameLayout rootLayout = findViewById(R.id.viewLayout);
-            rootLayout.removeView(backView);
-            backView.removeJavascriptInterface(JSInterface);
-            backView.loadDataWithBaseURL(null, "", "text/html", "utf-8", null);
-            backView.clearHistory();
-            backView.destroy();
-            backView = null;
-        }
     }
 
     private void loadRoomURL() {
@@ -545,22 +518,6 @@ public class LiveCloudActivity extends AppCompatActivity {
     @JavascriptInterface
     public void exit() {
         runOnUiThread(this::finish);
-    }
-
-    @JavascriptInterface
-    public void playBackgroundStream(String params) {
-        runOnUiThread(() -> {
-            if (x5WebView == null) {
-                return;
-            }
-            FrameLayout rootLayout = findViewById(R.id.viewLayout);
-            backView = new BackgroundMediaWebView(this, params);
-            backView.timeUpdateListener = () -> {
-                x5WebView.evaluateJavascript("liveCloudNativeEventCallback({name:'timeUpdate'})", null);
-            };
-            rootLayout.addView(backView);
-            backView.loadUrl("file:///android_asset/index.html");
-        });
     }
 
 
