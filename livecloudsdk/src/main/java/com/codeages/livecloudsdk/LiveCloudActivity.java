@@ -113,6 +113,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         String blacklistUrl = "https://livecloud-storage-sh.edusoho.net/metas/feature-config.json?ts=" + System.currentTimeMillis();
         LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) -> {
+            boolean disableX5 = false;
             if (successMsg != null) {
                 String version = String.valueOf(QbSdk.getTbsVersion(context));
                 try {
@@ -120,40 +121,50 @@ public class LiveCloudActivity extends AppCompatActivity {
                     if (!isLive) {
                         boolean replayX5 = msg.getBoolean("replayX5");
                         if (!replayX5) {
-                            intent.putExtra("disableX5", true);
-                            context.startActivity(intent);
-                            progressDialog.dismiss();
-                            return;
-                        }
-                        JSONArray schoolList = msg.getJSONArray("replayX5SchoolBlacklist");
-                        for (int i = 0; i < schoolList.length(); i++) {
-                            if (schoolList.getString(i).equals(accessKey)) {
-                                intent.putExtra("disableX5", true);
-                                context.startActivity(intent);
-                                progressDialog.dismiss();
-                                return;
+                            disableX5 = true;
+                        } else {
+                            JSONArray schoolList = msg.getJSONArray("replayX5SchoolBlacklist");
+                            for (int i = 0; i < schoolList.length(); i++) {
+                                if (schoolList.getString(i).equals(accessKey)) {
+                                    disableX5 = true;
+                                    break;
+                                }
                             }
                         }
                     }
-                    JSONArray versionList = msg.getJSONArray(isLive ? "liveX5VersionBlacklist" : "replayX5VersionBlacklist");
-                    for (int i = 0; i < versionList.length(); i++) {
-                        if (versionList.getString(i).equals(version)) {
-                            intent.putExtra("disableX5", true);
-                            context.startActivity(intent);
-                            progressDialog.dismiss();
-                            return;
+                    if (!disableX5) {
+                        JSONArray versionList = msg.getJSONArray(isLive ? "liveX5VersionBlacklist" : "replayX5VersionBlacklist");
+                        for (int i = 0; i < versionList.length(); i++) {
+                            if (versionList.getString(i).equals(version)) {
+                                disableX5 = true;
+                                break;
+                            }
                         }
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
+                    intent.putExtra("disableX5", true);
+                    context.startActivity(intent);
+                    progressDialog.dismiss();
+                    return;
+                }
+            } else {
+                if (!isLive) {
+                    disableX5 = true;
                 }
             }
-            if (LiveCloudUtils.getTimeoutTimes(context, roomId) > 2) {
+
+            if (disableX5) {
                 intent.putExtra("disableX5", true);
-                LiveCloudUtils.disableX5(context, roomId);
-            } else {
-                intent.putExtra("disableX5", false);
+                context.startActivity(intent);
+                progressDialog.dismiss();
+                return;
             }
+            if (LiveCloudUtils.getTimeoutTimes(context, roomId) > 2) {
+                disableX5 = true;
+                LiveCloudUtils.disableX5(context, roomId);
+            }
+            intent.putExtra("disableX5", disableX5);
             context.startActivity(intent);
             progressDialog.dismiss();
         });
