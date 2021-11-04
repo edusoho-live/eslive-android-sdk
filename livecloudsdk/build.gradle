@@ -7,6 +7,7 @@ android {
     useLibrary 'org.apache.http.legacy'
 
     compileSdkVersion 30
+    ndkVersion "21.1.6352462"
 
     defaultConfig {
         minSdkVersion 21
