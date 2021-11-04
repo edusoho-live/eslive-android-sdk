@@ -7,6 +7,7 @@ public class ReplayInfo {
         PENDING,
         DOWNLOADING,
         PAUSE,
-        COMPLETED
+        COMPLETED,
+        ERROR
     }
 }

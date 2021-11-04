@@ -6,27 +6,33 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.graphics.PixelFormat;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Message;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
-import android.widget.FrameLayout;
+import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.core.widget.ContentLoadingProgressBar;
 
 import com.codeages.livecloudsdk.server.HttpServerFactory;
 import com.tencent.smtt.export.external.TbsCoreSettings;
+import com.tencent.smtt.export.external.extension.interfaces.IX5WebChromeClientExtension;
+import com.tencent.smtt.export.external.extension.interfaces.IX5WebViewExtension;
 import com.tencent.smtt.export.external.interfaces.ConsoleMessage;
+import com.tencent.smtt.export.external.interfaces.IX5WebViewBase;
 import com.tencent.smtt.export.external.interfaces.JsPromptResult;
 import com.tencent.smtt.export.external.interfaces.JsResult;
-import com.tencent.smtt.export.external.interfaces.PermissionRequest;
+import com.tencent.smtt.export.external.interfaces.MediaAccessPermissionsCallback;
 import com.tencent.smtt.export.external.interfaces.SslError;
 import com.tencent.smtt.export.external.interfaces.SslErrorHandler;
 import com.tencent.smtt.export.external.interfaces.WebResourceError;
@@ -57,8 +63,10 @@ public class LiveCloudActivity extends AppCompatActivity {
     protected boolean isLive;
     private boolean disableX5;
     private String roomId = "0";
-    private PermissionRequest x5Request;
     private android.webkit.PermissionRequest nativeRequest;
+    private MediaAccessPermissionsCallback permissionsCallback;
+    private String permissionSite;
+    private long permissionType;
     private Boolean connect = false;
     private Boolean isFullscreen = false;
     private Long enterTimestamp;
@@ -119,8 +127,7 @@ public class LiveCloudActivity extends AppCompatActivity {
                 try {
                     JSONObject msg = new JSONObject(successMsg);
                     if (!isLive) {
-                        boolean replayX5 = msg.getBoolean("replayX5");
-                        if (!replayX5) {
+                        if (!msg.getBoolean("replayX5")) {
                             disableX5 = true;
                         } else {
                             JSONArray schoolList = msg.getJSONArray("replayX5SchoolBlacklist");
@@ -201,6 +208,12 @@ public class LiveCloudActivity extends AppCompatActivity {
         loadingView = findViewById(R.id.loadingView);
         loadingView.show();
 
+        createWebView();
+
+        loadRoomURL();
+
+        enterTimestamp = System.currentTimeMillis();
+
         String userId = getIntent().getStringExtra("userId");
         String userName = getIntent().getStringExtra("userName");
         if (null != userId) {
@@ -215,13 +228,6 @@ public class LiveCloudActivity extends AppCompatActivity {
                 logger.debug("SDK.PermissionDeny", null, null);
             }
         }
-
-        createWebView();
-
-        loadRoomURL();
-
-        enterTimestamp = System.currentTimeMillis();
-
     }
 
     @Override
@@ -313,6 +319,7 @@ public class LiveCloudActivity extends AppCompatActivity {
             x5WebView = findViewById(R.id.xWebView);
             x5WebView.setWebViewClient(createX5Client());
             x5WebView.setWebChromeClient(createX5ChromeClient());
+            x5WebView.setWebChromeClientExtension(createX5Extension());
             x5WebView.addJavascriptInterface(this, JSInterface);
             WebSettings webSettings = x5WebView.getSettings();
             webSettings.setJavaScriptEnabled(true);
@@ -329,8 +336,13 @@ public class LiveCloudActivity extends AppCompatActivity {
             nativeWebView.setWebViewClient(createNativeClient());
             nativeWebView.setWebChromeClient(createNativeChromeClient());
             nativeWebView.addJavascriptInterface(this, JSInterface);
-            FrameLayout rootLayout = findViewById(R.id.viewLayout);
+            KeyboardLayout rootLayout = findViewById(R.id.viewLayout);
             rootLayout.addView(nativeWebView);
+            rootLayout.setKeyboardListener((isActive, keyboardHeight, density) -> {
+//                if (isActive) {
+                    nativeWebView.evaluateJavascript("liveCloudNativeEventCallback({name:'keyboardHeight', payload:" + (int)(keyboardHeight/density) + "})", null);
+//                }
+            });
         }
     }
 
@@ -399,27 +411,167 @@ public class LiveCloudActivity extends AppCompatActivity {
         };
     }
 
-    private WebChromeClient createX5ChromeClient() {
-        return new WebChromeClient() {
+    private IX5WebChromeClientExtension createX5Extension() {
+        return new IX5WebChromeClientExtension() {
 
             @Override
-            public void onPermissionRequest(PermissionRequest request) {
-                runOnUiThread(() -> {
-                    for (String permission : request.getResources()) {
-                        x5Request = request;
-                        switch (permission) {
-                            case PermissionRequest.RESOURCE_AUDIO_CAPTURE: {
-                                askForPermission(Manifest.permission.RECORD_AUDIO);
-                                break;
-                            }
-                            case PermissionRequest.RESOURCE_VIDEO_CAPTURE: {
-                                askForPermission(Manifest.permission.CAMERA);
-                                break;
-                            }
-                        }
-                    }
-                });
+            public Object getX5WebChromeClientInstance() {
+                return null;
             }
+
+            @Override
+            public View getVideoLoadingProgressView() {
+                return null;
+            }
+
+            @Override
+            public void onAllMetaDataFinished(IX5WebViewExtension ix5WebViewExtension, HashMap<String, String> hashMap) {
+
+            }
+
+            @Override
+            public void onBackforwardFinished(int i) {
+
+            }
+
+            @Override
+            public void onHitTestResultForPluginFinished(IX5WebViewExtension ix5WebViewExtension, IX5WebViewBase.HitTestResult hitTestResult, Bundle bundle) {
+
+            }
+
+            @Override
+            public void onHitTestResultFinished(IX5WebViewExtension ix5WebViewExtension, IX5WebViewBase.HitTestResult hitTestResult) {
+
+            }
+
+            @Override
+            public void onPromptScaleSaved(IX5WebViewExtension ix5WebViewExtension) {
+
+            }
+
+            @Override
+            public void onPromptNotScalable(IX5WebViewExtension ix5WebViewExtension) {
+
+            }
+
+            @Override
+            public boolean onAddFavorite(IX5WebViewExtension ix5WebViewExtension, String s, String s1, JsResult jsResult) {
+                return false;
+            }
+
+            @Override
+            public void onPrepareX5ReadPageDataFinished(IX5WebViewExtension ix5WebViewExtension, HashMap<String, String> hashMap) {
+
+            }
+
+            @Override
+            public boolean onSavePassword(String s, String s1, String s2, boolean b, Message message) {
+                return false;
+            }
+
+            @Override
+            public boolean onSavePassword(ValueCallback<String> valueCallback, String s, String s1, String s2, String s3, String s4, boolean b) {
+                return false;
+            }
+
+            @Override
+            public void onX5ReadModeAvailableChecked(HashMap<String, String> hashMap) {
+
+            }
+
+            @Override
+            public void addFlashView(View view, ViewGroup.LayoutParams layoutParams) {
+
+            }
+
+            @Override
+            public void h5videoRequestFullScreen(String s) {
+
+            }
+
+            @Override
+            public void h5videoExitFullScreen(String s) {
+
+            }
+
+            @Override
+            public void requestFullScreenFlash() {
+
+            }
+
+            @Override
+            public void exitFullScreenFlash() {
+
+            }
+
+            @Override
+            public void jsRequestFullScreen() {
+
+            }
+
+            @Override
+            public void jsExitFullScreen() {
+
+            }
+
+            @Override
+            public void acquireWakeLock() {
+
+            }
+
+            @Override
+            public void releaseWakeLock() {
+
+            }
+
+            @Override
+            public Context getApplicationContex() {
+                return null;
+            }
+
+            @Override
+            public boolean onPageNotResponding(Runnable runnable) {
+                return false;
+            }
+
+            @Override
+            public Object onMiscCallBack(String s, Bundle bundle) {
+                return null;
+            }
+
+            @Override
+            public void openFileChooser(ValueCallback<Uri[]> valueCallback, String s, String s1) {
+
+            }
+
+            @Override
+            public void onPrintPage() {
+
+            }
+
+            @Override
+            public void onColorModeChanged(long l) {
+
+            }
+
+            @Override
+            public boolean onPermissionRequest(String s, long l, MediaAccessPermissionsCallback mediaAccessPermissionsCallback) {
+                permissionSite = s;
+                permissionType = l;
+                permissionsCallback = mediaAccessPermissionsCallback;
+                if ((l & MediaAccessPermissionsCallback.BITMASK_RESOURCE_AUDIO_CAPTURE) != 0) {
+                    requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
+                } else if ((l & MediaAccessPermissionsCallback.BITMASK_RESOURCE_VIDEO_CAPTURE) != 0) {
+                    requestPermissionLauncher.launch(Manifest.permission.CAMERA);
+                }
+
+                return true;
+            }
+        };
+    }
+
+    private WebChromeClient createX5ChromeClient() {
+        return new WebChromeClient() {
 
             @Override
             public boolean onJsPrompt(WebView webView, String s, String s1, String s2, JsPromptResult jsPromptResult) {
@@ -464,11 +616,11 @@ public class LiveCloudActivity extends AppCompatActivity {
                         nativeRequest = request;
                         switch (permission) {
                             case PermissionRequest.RESOURCE_AUDIO_CAPTURE: {
-                                askForPermission(Manifest.permission.RECORD_AUDIO);
+                                requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
                                 break;
                             }
                             case PermissionRequest.RESOURCE_VIDEO_CAPTURE: {
-                                askForPermission(Manifest.permission.CAMERA);
+                                requestPermissionLauncher.launch(Manifest.permission.CAMERA);
                                 break;
                             }
                         }
@@ -554,29 +706,20 @@ public class LiveCloudActivity extends AppCompatActivity {
         return (System.currentTimeMillis() - enterTimestamp) / 1000;
     }
 
-    private void askForPermission(String permission) {
-        if (ContextCompat.checkSelfPermission(this, permission) !=
-                PackageManager.PERMISSION_GRANTED) {
-            requestPermissionLauncher.launch(permission);
-        }
-    }
-
     private final ActivityResultLauncher<String> requestPermissionLauncher =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-                runOnUiThread(() -> {
-                    if (isGranted) {
-                        if (x5Request != null) {
-                            x5Request.grant(x5Request.getResources());
-                        } else {
-                            nativeRequest.grant(nativeRequest.getResources());
-                        }
-                    } else {
-                        if (x5Request != null) {
-                            x5Request.deny();
-                        } else {
-                            nativeRequest.deny();
-                        }
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> runOnUiThread(() -> {
+                if (isGranted) {
+                    if (nativeRequest != null) {
+                        nativeRequest.grant(nativeRequest.getResources());
+                    } else if (permissionsCallback != null) {
+                        permissionsCallback.invoke(permissionSite, permissionType, true);
                     }
-                });
-            });
+                } else {
+                    if (nativeRequest != null) {
+                        nativeRequest.deny();
+                    } else if (permissionsCallback != null) {
+                        permissionsCallback.invoke(permissionSite, permissionType, false);
+                    }
+                }
+            }));
 }
