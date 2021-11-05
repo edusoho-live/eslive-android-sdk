@@ -62,6 +62,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     protected String logUrl = "";
     protected boolean isLive;
     private boolean disableX5;
+    private boolean testUrl;
     private String roomId = "0";
     private android.webkit.PermissionRequest nativeRequest;
     private MediaAccessPermissionsCallback permissionsCallback;
@@ -87,8 +88,16 @@ public class LiveCloudActivity extends AppCompatActivity {
         String roomId = String.valueOf(jwt.get("rid"));
         String accessKey = String.valueOf(jwt.get("kid"));
         intent.putExtra("roomId", roomId);
-        if (options != null && options.get("logUrl") != null) {
-            intent.putExtra("logUrl", (String) options.get("logUrl"));
+        if (options != null) {
+            if (options.get("logUrl") != null) {
+                intent.putExtra("logUrl", (String) options.get("logUrl"));
+            }
+            if (options.get("disableX5") != null) {
+                intent.putExtra("disableX5", (Boolean) options.get("disableX5"));
+            }
+            if (options.get("testUrl") != null) {
+                intent.putExtra("testUrl", (Boolean) options.get("testUrl"));
+            }
         }
 
         start(context, isLive, intent, roomId, accessKey);
@@ -110,6 +119,20 @@ public class LiveCloudActivity extends AppCompatActivity {
         LiveCloudUtils.checkClearCaches(context);
 
         initTbs(context);
+
+        if (intent.getBooleanExtra("testUrl", false)) {
+            intent.putExtra("disableX5", intent.getBooleanExtra("disableX5", false));
+            context.startActivity(intent);
+            progressDialog.dismiss();
+            return;
+        }
+
+        if (intent.getBooleanExtra("disableX5", false)) {
+            intent.putExtra("disableX5", true);
+            context.startActivity(intent);
+            progressDialog.dismiss();
+            return;
+        }
 
         if ((!isLive && QbSdk.getTbsVersion(context) < 45613) ||    // 倍速播放bug
                 (isLive && QbSdk.getTbsVersion(context) < 45000)) { // 直播
@@ -204,6 +227,7 @@ public class LiveCloudActivity extends AppCompatActivity {
         logUrl = getIntent().getStringExtra("logUrl");
         disableX5 = getIntent().getBooleanExtra("disableX5", false);
         roomId = getIntent().getStringExtra("roomId");
+        testUrl = getIntent().getBooleanExtra("testUrl", false);
 
         loadingView = findViewById(R.id.loadingView);
         loadingView.show();
@@ -275,6 +299,14 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     private void loadRoomURL() {
+        if (testUrl) {
+            if (x5WebView != null) {
+                x5WebView.loadUrl(url);
+            } else {
+                nativeWebView.loadUrl(url);
+            }
+            return;
+        }
         byte[] infoByte = new JSONObject(deviceInfoMap()).toString().getBytes(StandardCharsets.UTF_8);
         String base64String;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -340,7 +372,7 @@ public class LiveCloudActivity extends AppCompatActivity {
             rootLayout.addView(nativeWebView);
             rootLayout.setKeyboardListener((isActive, keyboardHeight, density) -> {
 //                if (isActive) {
-                    nativeWebView.evaluateJavascript("liveCloudNativeEventCallback({name:'keyboardHeight', payload:" + (int)(keyboardHeight/density) + "})", null);
+                    nativeWebView.evaluateJavascript("liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(keyboardHeight/density) + "}})", null);
 //                }
             });
         }

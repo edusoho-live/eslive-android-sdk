@@ -68,7 +68,7 @@ public class KeyboardLayout extends FrameLayout {
 //            }
             WindowManager wm = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
             DisplayMetrics metrics = new DisplayMetrics();
-            wm.getDefaultDisplay().getMetrics(metrics);
+            wm.getDefaultDisplay().getRealMetrics(metrics);
             mScreenHeight = metrics.heightPixels;
             density = metrics.density;
             return mScreenHeight;

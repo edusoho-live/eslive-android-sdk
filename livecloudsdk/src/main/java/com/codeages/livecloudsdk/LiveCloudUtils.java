@@ -36,7 +36,7 @@ import static android.content.Context.MODE_PRIVATE;
 
 public class LiveCloudUtils {
 
-    private static final int SDKVersion = 4;
+    public static final int SDKVersion = 4;
 
     private static final String ALLOWED_CHARACTERS = "0123456789qwertyuiopasdfghjklzxcvbnm";
 
@@ -53,6 +53,9 @@ public class LiveCloudUtils {
 
     protected static Map<String, Object> parseJwt(String url) {
         String token = new UrlQuerySanitizer(url).getValue("token");
+        if (token == null) {
+            return new HashMap<>();
+        }
         String[] chunks = token.split("\\.");
         if (chunks.length < 1) {
             return new HashMap<>();
