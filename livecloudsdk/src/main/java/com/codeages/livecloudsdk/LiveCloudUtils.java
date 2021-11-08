@@ -306,7 +306,7 @@ public class LiveCloudUtils {
         }
     }
 
-    private static void hideNavigationBar(AppCompatActivity activity) {
+    public static void hideNavigationBar(AppCompatActivity activity) {
         View decorView = activity.getWindow().getDecorView();
         int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
         decorView.setSystemUiVisibility(uiOptions);

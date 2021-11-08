@@ -43,8 +43,6 @@ public class KeyboardLayout extends FrameLayout {
 
     /**
      * 获取输入法高度
-     *
-     * @return
      */
     public int getKeyboardHeight() {
         return mKeyboardHeight;
