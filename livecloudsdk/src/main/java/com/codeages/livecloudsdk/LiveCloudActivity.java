@@ -335,7 +335,7 @@ public class LiveCloudActivity extends AppCompatActivity {
             } else {
                 nativeWebView.evaluateJavascript("liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(keyboardHeight/density) + "}})", null);
             }
-            if (!isActive && isFullscreen) {
+            if (isFullscreen) {
                 LiveCloudUtils.hideNavigationBar(this);
             }
         });
