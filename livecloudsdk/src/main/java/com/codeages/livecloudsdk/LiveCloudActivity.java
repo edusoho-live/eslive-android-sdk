@@ -17,6 +17,7 @@ import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
+import android.widget.FrameLayout;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -236,6 +237,19 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         loadRoomURL();
 
+        new KeyboardHeightProvider(this).init().setHeightListener((height, density) -> {
+            if (null != x5WebView) {
+                x5WebView.evaluateJavascript(
+                        "liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(height/density) + "}})", null);
+            } else {
+                nativeWebView.evaluateJavascript(
+                        "liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(height/density) + "}})", null);
+            }
+            if (isFullscreen) {
+                LiveCloudUtils.hideNavigationBar(this);
+            }
+        });
+
         enterTimestamp = System.currentTimeMillis();
 
         String userId = getIntent().getStringExtra("userId");
@@ -328,19 +342,8 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     private void createWebView() {
-        KeyboardLayout rootLayout = findViewById(R.id.viewLayout);
-        rootLayout.setKeyboardListener((isActive, keyboardHeight, density) -> {
-            if (null != x5WebView) {
-                x5WebView.evaluateJavascript("liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(keyboardHeight/density) + "}})", null);
-            } else {
-                nativeWebView.evaluateJavascript("liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(keyboardHeight/density) + "}})", null);
-            }
-            if (isFullscreen) {
-                LiveCloudUtils.hideNavigationBar(this);
-            }
-        });
         if (!disableX5) {
-//            WebView.setWebContentsDebuggingEnabled(true);
+            WebView.setWebContentsDebuggingEnabled(true);
             QbSdk.setTbsListener(new TbsListener() {
                 @Override
                 public void onDownloadFinish(int i) {
@@ -373,11 +376,12 @@ public class LiveCloudActivity extends AppCompatActivity {
             webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
             webSettings.setMediaPlaybackRequiresUserGesture(false);
         } else {
-//            android.webkit.WebView.setWebContentsDebuggingEnabled(true);
+            android.webkit.WebView.setWebContentsDebuggingEnabled(true);
             nativeWebView = new ReplayWebView(this);
             nativeWebView.setWebViewClient(createNativeClient());
             nativeWebView.setWebChromeClient(createNativeChromeClient());
             nativeWebView.addJavascriptInterface(this, JSInterface);
+            FrameLayout rootLayout = findViewById(R.id.viewLayout);
             rootLayout.addView(nativeWebView);
         }
     }

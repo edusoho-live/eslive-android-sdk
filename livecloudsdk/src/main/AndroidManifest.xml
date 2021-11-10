@@ -25,7 +25,7 @@
             android:hardwareAccelerated="true"
             android:screenOrientation="portrait"
             android:theme="@style/LiveCloudTheme"
-            android:windowSoftInputMode="stateHidden|adjustResize" />
+            android:windowSoftInputMode="stateHidden|adjustNothing" />
 
         <service
             android:name="com.tencent.smtt.export.external.DexClassLoaderProviderService"
