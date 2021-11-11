@@ -37,6 +37,11 @@ public class KeyboardHeightProvider extends PopupWindow implements ViewTreeObser
         // Set keyboard pop-up mode
         setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         setInputMethodMode(PopupWindow.INPUT_METHOD_NEEDED);
+
+        WindowManager wm = (WindowManager) mActivity.getSystemService(Context.WINDOW_SERVICE);
+        DisplayMetrics metrics = new DisplayMetrics();
+        wm.getDefaultDisplay().getRealMetrics(metrics);
+        density = metrics.density;
     }
 
     public KeyboardHeightProvider init() {
@@ -54,11 +59,9 @@ public class KeyboardHeightProvider extends PopupWindow implements ViewTreeObser
     }
 
     private int getScreenHeight() {
-        WindowManager wm = (WindowManager) mActivity.getSystemService(Context.WINDOW_SERVICE);
-        DisplayMetrics metrics = new DisplayMetrics();
-        wm.getDefaultDisplay().getMetrics(metrics);
-        density = metrics.density;
-        return metrics.heightPixels;
+        Rect rect = new Rect();
+        mActivity.getWindow().getDecorView().getWindowVisibleDisplayFrame(rect);
+        return rect.height();
     }
 
     @Override
@@ -66,7 +69,7 @@ public class KeyboardHeightProvider extends PopupWindow implements ViewTreeObser
         Rect rect = new Rect();
         rootView.getWindowVisibleDisplayFrame(rect);
 
-        int keyboardHeight = getScreenHeight() - rect.bottom;
+        int keyboardHeight = getScreenHeight() - rect.height();
         if (listener != null) {
             listener.onHeightChanged(keyboardHeight, density);
         }
