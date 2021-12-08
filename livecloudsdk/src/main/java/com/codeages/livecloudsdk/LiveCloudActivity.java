@@ -2,11 +2,11 @@ package com.codeages.livecloudsdk;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -51,8 +51,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class LiveCloudActivity extends AppCompatActivity {
@@ -115,8 +118,6 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     private static void start(Context context, boolean isLive, Intent intent, String roomId, String accessKey) {
-        ProgressDialog progressDialog = ProgressDialog.show(context, "", "加载中", true, true);
-
         LiveCloudUtils.checkClearCaches(context);
 
         initTbs(context);
@@ -124,14 +125,12 @@ public class LiveCloudActivity extends AppCompatActivity {
         if (intent.getBooleanExtra("testUrl", false)) {
             intent.putExtra("disableX5", intent.getBooleanExtra("disableX5", false));
             context.startActivity(intent);
-            progressDialog.dismiss();
             return;
         }
 
         if (intent.getBooleanExtra("disableX5", false)) {
             intent.putExtra("disableX5", true);
             context.startActivity(intent);
-            progressDialog.dismiss();
             return;
         }
 
@@ -139,7 +138,6 @@ public class LiveCloudActivity extends AppCompatActivity {
                 (isLive && QbSdk.getTbsVersion(context) < 45000)) { // 直播
             intent.putExtra("disableX5", true);
             context.startActivity(intent);
-            progressDialog.dismiss();
             return;
         }
 
@@ -176,7 +174,6 @@ public class LiveCloudActivity extends AppCompatActivity {
                     e.printStackTrace();
                     intent.putExtra("disableX5", true);
                     context.startActivity(intent);
-                    progressDialog.dismiss();
                     return;
                 }
             } else {
@@ -188,7 +185,6 @@ public class LiveCloudActivity extends AppCompatActivity {
             if (disableX5) {
                 intent.putExtra("disableX5", true);
                 context.startActivity(intent);
-                progressDialog.dismiss();
                 return;
             }
             if (LiveCloudUtils.getTimeoutTimes(context, roomId) > 2) {
@@ -197,7 +193,6 @@ public class LiveCloudActivity extends AppCompatActivity {
             }
             intent.putExtra("disableX5", disableX5);
             context.startActivity(intent);
-            progressDialog.dismiss();
         });
     }
 
@@ -237,14 +232,17 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         loadRoomURL();
 
-        new KeyboardHeightProvider(this).init().setHeightListener((height, density) -> {
-            if (null != x5WebView) {
-                x5WebView.evaluateJavascript(
-                        "liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(height/density) + "}})", null);
-            } else {
-                nativeWebView.evaluateJavascript(
-                        "liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(height/density) + "}})", null);
+        new KeyboardHeightProvider(this).init().setHeightListener((height, density, cutout) -> {
+            evalJs("liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(height/density) + "}})");
+            List<String> rects = new ArrayList<>();
+            for (Rect c: cutout) {
+                StringBuilder sb = new StringBuilder(32);
+                sb.append("["); sb.append(c.left); sb.append(",");
+                sb.append(c.top); sb.append(","); sb.append(c.right);
+                sb.append(","); sb.append(c.bottom); sb.append("]");
+                rects.add(sb.toString());
             }
+            evalJs("liveCloudNativeEventCallback({name:'DisplayCutout', payload:{cutout:" +  Arrays.deepToString(rects.toArray()) + "}})");
             if (isFullscreen) {
                 LiveCloudUtils.hideNavigationBar(this);
             }
@@ -271,11 +269,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         if (connect) {
-            if (x5WebView != null) {
-                x5WebView.evaluateJavascript("liveCloudNativeEventCallback({name:'back'})", null);
-            } else {
-                nativeWebView.evaluateJavascript("liveCloudNativeEventCallback({name:'back'})", null);
-            }
+            evalJs("liveCloudNativeEventCallback({name:'back'})");
         } else {
             if (enterDurationSecond() >= 10) {
                 int times = LiveCloudUtils.connectTimeout(this, roomId);
@@ -343,7 +337,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     private void createWebView() {
         if (!disableX5) {
-            WebView.setWebContentsDebuggingEnabled(true);
+//            WebView.setWebContentsDebuggingEnabled(true);
             QbSdk.setTbsListener(new TbsListener() {
                 @Override
                 public void onDownloadFinish(int i) {
@@ -376,7 +370,7 @@ public class LiveCloudActivity extends AppCompatActivity {
             webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
             webSettings.setMediaPlaybackRequiresUserGesture(false);
         } else {
-            android.webkit.WebView.setWebContentsDebuggingEnabled(true);
+//            android.webkit.WebView.setWebContentsDebuggingEnabled(true);
             nativeWebView = new ReplayWebView(this);
             nativeWebView.setWebViewClient(createNativeClient());
             nativeWebView.setWebChromeClient(createNativeChromeClient());
@@ -744,6 +738,14 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     private long enterDurationSecond() {
         return (System.currentTimeMillis() - enterTimestamp) / 1000;
+    }
+
+    private void evalJs(String js) {
+        if (x5WebView != null) {
+            x5WebView.evaluateJavascript(js, null);
+        } else {
+            nativeWebView.evaluateJavascript(js, null);
+        }
     }
 
     private final ActivityResultLauncher<String> requestPermissionLauncher =

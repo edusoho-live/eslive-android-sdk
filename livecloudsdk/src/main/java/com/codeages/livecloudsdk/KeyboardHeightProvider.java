@@ -4,13 +4,17 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.PopupWindow;
+
+import java.util.List;
 
 public class KeyboardHeightProvider extends PopupWindow implements ViewTreeObserver.OnGlobalLayoutListener {
     private final Activity mActivity;
@@ -64,6 +68,22 @@ public class KeyboardHeightProvider extends PopupWindow implements ViewTreeObser
         return rect.height();
     }
 
+    private List<Rect> getCutoutInfo() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                WindowInsets windowInsets = mActivity.getWindow().getDecorView().getRootWindowInsets();
+                if (windowInsets != null) {
+                    return windowInsets.getDisplayCutout().getBoundingRects();
+                } else {
+                    return null;
+                }
+            } catch (Exception e) {
+//                Log.e(TAG_CUTOUT, "error:" + e.toString());
+            }
+        }
+        return null;
+    }
+
     @Override
     public void onGlobalLayout() {
         Rect rect = new Rect();
@@ -71,11 +91,11 @@ public class KeyboardHeightProvider extends PopupWindow implements ViewTreeObser
 
         int keyboardHeight = getScreenHeight() - rect.height();
         if (listener != null) {
-            listener.onHeightChanged(keyboardHeight, density);
+            listener.onHeightChanged(keyboardHeight, density, getCutoutInfo());
         }
     }
 
     public interface HeightListener {
-        void onHeightChanged(int height, float density);
+        void onHeightChanged(int height, float density, List<Rect> cutout);
     }
 }
