@@ -234,15 +234,17 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         new KeyboardHeightProvider(this).init().setHeightListener((height, density, cutout) -> {
             evalJs("liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(height/density) + "}})");
-            List<String> rects = new ArrayList<>();
-            for (Rect c: cutout) {
-                StringBuilder sb = new StringBuilder(32);
-                sb.append("["); sb.append(c.left); sb.append(",");
-                sb.append(c.top); sb.append(","); sb.append(c.right);
-                sb.append(","); sb.append(c.bottom); sb.append("]");
-                rects.add(sb.toString());
+            if (cutout != null) {
+                List<String> rects = new ArrayList<>();
+                for (Rect c: cutout) {
+                    StringBuilder sb = new StringBuilder(32);
+                    sb.append("["); sb.append(c.left); sb.append(",");
+                    sb.append(c.top); sb.append(","); sb.append(c.right);
+                    sb.append(","); sb.append(c.bottom); sb.append("]");
+                    rects.add(sb.toString());
+                }
+                evalJs("liveCloudNativeEventCallback({name:'DisplayCutout', payload:{cutout:" +  Arrays.deepToString(rects.toArray()) + "}})");
             }
-            evalJs("liveCloudNativeEventCallback({name:'DisplayCutout', payload:{cutout:" +  Arrays.deepToString(rects.toArray()) + "}})");
             if (isFullscreen) {
                 LiveCloudUtils.hideNavigationBar(this);
             }
