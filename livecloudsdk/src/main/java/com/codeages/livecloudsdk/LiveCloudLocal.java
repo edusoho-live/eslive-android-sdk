@@ -3,6 +3,7 @@ package com.codeages.livecloudsdk;
 import com.blankj.utilcode.util.FileUtils;
 import com.blankj.utilcode.util.GsonUtils;
 import com.blankj.utilcode.util.PathUtils;
+import com.blankj.utilcode.util.StringUtils;
 import com.codeages.livecloudsdk.bean.ReplayInfo;
 import com.codeages.livecloudsdk.bean.ReplayMetas;
 import com.tencent.mmkv.MMKV;
@@ -93,6 +94,21 @@ public class LiveCloudLocal {
     public static void removeMetasUrl(String key) {
         MMKV kv = MMKV.mmkvWithID(LIVE_CLOUD_REPLAY_METAS_URL, MMKV.MULTI_PROCESS_MODE);
         kv.remove(key);
+    }
+
+    /**
+     * 是否存在相同的RoomId录像
+     *
+     */
+    public static boolean isExistReplay(int roomId, String targetKey) {
+        MMKV kv = MMKV.mmkvWithID(LIVE_CLOUD_REPLAY_DB, MMKV.MULTI_PROCESS_MODE);
+        for (String key : kv.allKeys()) {
+            ReplayMetas tmpReplayMetas = GsonUtils.fromJson(kv.decodeString(key), ReplayMetas.class);
+            if (!StringUtils.equals(targetKey, key) && tmpReplayMetas.getRoomId() == roomId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static String getPlayerFilesUrl(String playerBaseUri, String playerFileName) {

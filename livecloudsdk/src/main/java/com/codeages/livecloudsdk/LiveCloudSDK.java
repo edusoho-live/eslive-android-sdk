@@ -140,13 +140,15 @@ public class LiveCloudSDK {
     public void deleteReplay() {
         ReplayMetas replayMetas = LiveCloudLocal.getReplay(mKey);
         unsubscribe();
-        if (replayMetas != null) {
+        if (replayMetas == null) {
+            mReplayListener.onError(new ReplayError(ReplayError.NOT_EXIST));
+            return;
+        }
+        if (!LiveCloudLocal.isExistReplay(replayMetas.getRoomId(), mKey)) {
             int roomId = replayMetas.getRoomId();
             FileUtils.deleteAllInDir(LiveCloudLocal.getReplayDirectory(roomId + ""));
             FileUtils.delete(LiveCloudLocal.getReplayDirectory(roomId + ""));
             getLogger(replayMetas).info(Deleted, "删除已下载回放缓存", null);
-        } else {
-            mReplayListener.onError(new ReplayError(ReplayError.NOT_EXIST));
         }
         LiveCloudLocal.removeReplay(mKey);
         LiveCloudLocal.removeMetasUrl(mKey);

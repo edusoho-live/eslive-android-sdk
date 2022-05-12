@@ -1,5 +1,7 @@
 package com.codeages.livecloudsdk;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -31,8 +33,6 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-
-import static android.content.Context.MODE_PRIVATE;
 
 public class LiveCloudUtils {
 
@@ -280,7 +280,7 @@ public class LiveCloudUtils {
     }
 
 
-    public static void fullScreen(AppCompatActivity activity, boolean isFull) {//控制是否全屏显示
+    protected static void fullScreen(AppCompatActivity activity, boolean isFull) {//控制是否全屏显示
         if (isFull) {
             //适配刘海屏
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -298,7 +298,7 @@ public class LiveCloudUtils {
         }
     }
 
-    public static void hideNavigationBar(AppCompatActivity activity) {
+    protected static void hideNavigationBar(AppCompatActivity activity) {
         View decorView = activity.getWindow().getDecorView();
         int uiOptions = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
