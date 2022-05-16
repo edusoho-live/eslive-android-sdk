@@ -62,6 +62,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     protected WebView x5WebView;
     protected ReplayWebView nativeWebView;
+    protected WebView x5DownloadView;
     protected String url = "";
     protected String logUrl = "";
     protected boolean isLive;
@@ -79,6 +80,10 @@ public class LiveCloudActivity extends AppCompatActivity {
     private LiveCloudLogger logger;
 
     private static final String JSInterface = "LiveCloudBridge";
+
+    public interface x5InitCallback {
+        void onFinish(boolean isX5);
+    }
 
     /**
      * @param isGrantedPermission true: 权限获取成功 false：权限获取失败
@@ -118,85 +123,92 @@ public class LiveCloudActivity extends AppCompatActivity {
     }
 
     private static void start(Context context, boolean isLive, Intent intent, String roomId, String accessKey) {
-        LiveCloudUtils.checkClearCaches(context);
+        initTbs(context, isX5 -> {
+            if (!isX5) {
+                intent.putExtra("disableX5", true);
+                context.startActivity(intent);
+                return;
+            }
 
-        initTbs(context);
+            if (intent.getBooleanExtra("testUrl", false)) {
+                intent.putExtra("disableX5", intent.getBooleanExtra("disableX5", false));
+                context.startActivity(intent);
+                return;
+            }
 
-        if (intent.getBooleanExtra("testUrl", false)) {
-            intent.putExtra("disableX5", intent.getBooleanExtra("disableX5", false));
-            context.startActivity(intent);
-            return;
-        }
+            if (intent.getBooleanExtra("disableX5", false)) {
+                intent.putExtra("disableX5", true);
+                context.startActivity(intent);
+                return;
+            }
 
-        if (intent.getBooleanExtra("disableX5", false)) {
-            intent.putExtra("disableX5", true);
-            context.startActivity(intent);
-            return;
-        }
+            int x5Ver = QbSdk.getTbsVersion(context);
+            if (x5Ver > 0 &&
+                    ((!isLive && x5Ver < 45613) ||    // 倍速播放bug
+                    (isLive && x5Ver < 45000))) { // 直播
+                intent.putExtra("disableX5", true);
+                context.startActivity(intent);
+                return;
+            }
 
-        if ((!isLive && QbSdk.getTbsVersion(context) < 45613) ||    // 倍速播放bug
-                (isLive && QbSdk.getTbsVersion(context) < 45000)) { // 直播
-            intent.putExtra("disableX5", true);
-            context.startActivity(intent);
-            return;
-        }
-
-        String blacklistUrl = "https://livecloud-storage-sh.edusoho.net/metas/feature-config.json?ts=" + System.currentTimeMillis();
-        LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) -> {
-            boolean disableX5 = false;
-            if (successMsg != null) {
-                String version = String.valueOf(QbSdk.getTbsVersion(context));
-                try {
-                    JSONObject msg = new JSONObject(successMsg);
-                    if (!isLive) {
-                        if (!msg.getBoolean("replayX5")) {
-                            disableX5 = true;
-                        } else {
-                            JSONArray schoolList = msg.getJSONArray("replayX5SchoolBlacklist");
-                            for (int i = 0; i < schoolList.length(); i++) {
-                                if (schoolList.getString(i).equals(accessKey)) {
+            String blacklistUrl = "https://livecloud-storage-sh.edusoho.net/metas/feature-config.json?ts=" + System.currentTimeMillis();
+            LiveCloudHttpClient.get(blacklistUrl, 3000, (successMsg, errorMsg) -> {
+                boolean disableX5 = false;
+                if (successMsg != null) {
+                    String version = String.valueOf(QbSdk.getTbsVersion(context));
+                    try {
+                        JSONObject msg = new JSONObject(successMsg);
+                        if (!isLive) {
+                            if (!msg.getBoolean("replayX5")) {
+                                disableX5 = true;
+                            } else {
+                                JSONArray schoolList = msg.getJSONArray("replayX5SchoolBlacklist");
+                                for (int i = 0; i < schoolList.length(); i++) {
+                                    if (schoolList.getString(i).equals(accessKey)) {
+                                        disableX5 = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (!disableX5) {
+                            JSONArray versionList = msg.getJSONArray(isLive ? "liveX5VersionBlacklist" : "replayX5VersionBlacklist");
+                            for (int i = 0; i < versionList.length(); i++) {
+                                if (versionList.getString(i).equals(version)) {
                                     disableX5 = true;
                                     break;
                                 }
                             }
                         }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        intent.putExtra("disableX5", true);
+                        context.startActivity(intent);
+                        return;
                     }
-                    if (!disableX5) {
-                        JSONArray versionList = msg.getJSONArray(isLive ? "liveX5VersionBlacklist" : "replayX5VersionBlacklist");
-                        for (int i = 0; i < versionList.length(); i++) {
-                            if (versionList.getString(i).equals(version)) {
-                                disableX5 = true;
-                                break;
-                            }
-                        }
+                } else {
+                    if (!isLive) {
+                        disableX5 = true;
                     }
-                } catch (JSONException e) {
-                    e.printStackTrace();
+                }
+
+                if (disableX5) {
                     intent.putExtra("disableX5", true);
                     context.startActivity(intent);
                     return;
                 }
-            } else {
-                if (!isLive) {
+                if (LiveCloudUtils.getTimeoutTimes(context, roomId) > 2) {
                     disableX5 = true;
+                    LiveCloudUtils.disableX5(context, roomId);
                 }
-            }
-
-            if (disableX5) {
-                intent.putExtra("disableX5", true);
+                intent.putExtra("disableX5", disableX5);
                 context.startActivity(intent);
-                return;
-            }
-            if (LiveCloudUtils.getTimeoutTimes(context, roomId) > 2) {
-                disableX5 = true;
-                LiveCloudUtils.disableX5(context, roomId);
-            }
-            intent.putExtra("disableX5", disableX5);
-            context.startActivity(intent);
+            });
         });
     }
 
-    private static void initTbs(Context context) {
+    private static void initTbs(Context context, x5InitCallback callback) {
+        LiveCloudUtils.checkClearCaches(context);
         QbSdk.setDownloadWithoutWifi(true);
 
         Map<String, Object> map = new HashMap<>();
@@ -204,7 +216,22 @@ public class LiveCloudActivity extends AppCompatActivity {
         map.put(TbsCoreSettings.TBS_SETTINGS_USE_DEXLOADER_SERVICE, true);
         QbSdk.initTbsSettings(map);
 
-        QbSdk.initX5Environment(context.getApplicationContext(), null);
+        if (QbSdk.isTbsCoreInited()) {
+            callback.onFinish(LiveCloudUtils.getX5Downloaded(context));
+        } else {
+            QbSdk.initX5Environment(context.getApplicationContext(), new QbSdk.PreInitCallback() {
+                @Override
+                public void onCoreInitFinished() {
+
+                }
+
+                @Override
+                public void onViewInitFinished(boolean isX5) {
+                    LiveCloudUtils.setX5Downloaded(context, isX5);
+                    callback.onFinish(isX5);
+                }
+            });
+        }
     }
 
     @Override
@@ -258,13 +285,13 @@ public class LiveCloudActivity extends AppCompatActivity {
             logger = LiveCloudLogger.getInstance(Long.parseLong(roomId), Long.parseLong(userId), userName, logUrl);
         } else {
             logger = LiveCloudLogger.getInstance(logUrl, url);
+        }
 
-            logger.info("SDK.Enter", new JSONObject(deviceInfoMap()).toString(), new HashMap<String, Object>() {{
-                put("device", deviceInfoMap());
-            }});
-            if (!getIntent().getBooleanExtra("isGrantedPermission", true)) {
-                logger.debug("SDK.PermissionDeny", null, null);
-            }
+        logger.info("SDK.Enter", new JSONObject(deviceInfoMap()).toString(), new HashMap<String, Object>() {{
+            put("device", deviceInfoMap());
+        }});
+        if (!getIntent().getBooleanExtra("isGrantedPermission", true)) {
+            logger.debug("SDK.PermissionDeny", null, null);
         }
     }
 
@@ -296,7 +323,8 @@ public class LiveCloudActivity extends AppCompatActivity {
             x5WebView.clearHistory();
             x5WebView.destroy();
             x5WebView = null;
-        } else if (nativeWebView != null) {
+        }
+        if (nativeWebView != null) {
             nativeWebView.removeJavascriptInterface(JSInterface);
             nativeWebView.setWebViewClient(null);
             nativeWebView.setWebChromeClient(null);
@@ -304,6 +332,15 @@ public class LiveCloudActivity extends AppCompatActivity {
             nativeWebView.clearHistory();
             nativeWebView.destroy();
             nativeWebView = null;
+        }
+        if (x5DownloadView != null) {
+            x5DownloadView.removeJavascriptInterface(JSInterface);
+            x5DownloadView.setWebViewClient(null);
+            x5DownloadView.setWebChromeClient(null);
+            x5DownloadView.loadDataWithBaseURL(null, "", "text/html", "utf-8", null);
+            x5DownloadView.clearHistory();
+            x5DownloadView.destroy();
+            x5DownloadView = null;
         }
         HttpServerFactory.getInstance().stop();
     }
@@ -328,6 +365,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         if (x5WebView != null) {
             x5WebView.loadUrl(url + "&device=" + base64String);
+//            x5WebView.loadUrl("https://debugtbs.qq.com");
         } else {
             nativeWebView.loadUrl(url + "&device=" + base64String);
         }
@@ -336,42 +374,8 @@ public class LiveCloudActivity extends AppCompatActivity {
 //        webView.loadUrl("https://webrtc.github.io/samples/");
     }
 
-    @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     private void createWebView() {
-        if (!disableX5) {
-//            WebView.setWebContentsDebuggingEnabled(true);
-            QbSdk.setTbsListener(new TbsListener() {
-                @Override
-                public void onDownloadFinish(int i) {
-
-                }
-
-                @Override
-                public void onInstallFinish(int i) {
-                    logger.info("SDK.X5Installed", null, null);
-                }
-
-                @Override
-                public void onDownloadProgress(int i) {
-
-                }
-            });
-            x5WebView = findViewById(R.id.xWebView);
-            x5WebView.setWebViewClient(createX5Client());
-            x5WebView.setWebChromeClient(createX5ChromeClient());
-            x5WebView.setWebChromeClientExtension(createX5Extension());
-            x5WebView.addJavascriptInterface(this, JSInterface);
-            WebSettings webSettings = x5WebView.getSettings();
-            webSettings.setJavaScriptEnabled(true);
-            webSettings.setUseWideViewPort(true);
-            webSettings.setLoadWithOverviewMode(true);
-            webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-            webSettings.setDefaultTextEncodingName("utf-8");
-            webSettings.setDomStorageEnabled(true);
-            webSettings.setMixedContentMode(0);
-            webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
-            webSettings.setMediaPlaybackRequiresUserGesture(false);
-        } else {
+        if (disableX5) {
 //            android.webkit.WebView.setWebContentsDebuggingEnabled(true);
             nativeWebView = new ReplayWebView(this);
             nativeWebView.setWebViewClient(createNativeClient());
@@ -379,9 +383,57 @@ public class LiveCloudActivity extends AppCompatActivity {
             nativeWebView.addJavascriptInterface(this, JSInterface);
             FrameLayout rootLayout = findViewById(R.id.viewLayout);
             rootLayout.addView(nativeWebView);
+
+            x5DownloadView = createX5WebView(true);
+            x5DownloadView.setVisibility(View.INVISIBLE);
+            rootLayout.addView(x5DownloadView);
+            x5DownloadView.loadUrl("https://debugtbs.qq.com");
+            return;
         }
+        x5WebView = createX5WebView(false);
     }
 
+    @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
+    private WebView createX5WebView(boolean hide) {
+//            WebView.setWebContentsDebuggingEnabled(true);
+        QbSdk.setTbsListener(new TbsListener() {
+            @Override
+            public void onDownloadFinish(int i) {
+                logger.info("SDK.X5DownloadFinish", String.valueOf(i), null);
+            }
+
+            @Override
+            public void onInstallFinish(int i) {
+                logger.info("SDK.X5Installed", null, null);
+            }
+
+            @Override
+            public void onDownloadProgress(int i) {
+                logger.info("SDK.X5Downloading", String.valueOf(i), null);
+            }
+        });
+        WebView webView;
+        if (hide) {
+            webView = new WebView(getApplicationContext());
+        } else {
+            webView = findViewById(R.id.xWebView);
+        }
+        webView.setWebViewClient(createX5Client());
+        webView.setWebChromeClient(createX5ChromeClient());
+        webView.setWebChromeClientExtension(createX5Extension());
+        webView.addJavascriptInterface(this, JSInterface);
+        WebSettings webSettings = webView.getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setUseWideViewPort(true);
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        webSettings.setDefaultTextEncodingName("utf-8");
+        webSettings.setDomStorageEnabled(true);
+        webSettings.setMixedContentMode(0);
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
+        return webView;
+    }
 
     private WebViewClient createX5Client() {
         return new WebViewClient() {
@@ -648,16 +700,21 @@ public class LiveCloudActivity extends AppCompatActivity {
             @Override
             public void onPermissionRequest(android.webkit.PermissionRequest request) {
                 runOnUiThread(() -> {
-                    for (String permission : request.getResources()) {
-                        nativeRequest = request;
-                        switch (permission) {
-                            case PermissionRequest.RESOURCE_AUDIO_CAPTURE: {
-                                requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
-                                break;
-                            }
-                            case PermissionRequest.RESOURCE_VIDEO_CAPTURE: {
-                                requestPermissionLauncher.launch(Manifest.permission.CAMERA);
-                                break;
+                    nativeRequest = request;
+                    String[] res = request.getResources();
+                    if (res.length > 1) {
+                        requestMultiplePermissionLauncher.launch(request.getResources());
+                    } else {
+                        for (String permission : request.getResources()) {
+                            switch (permission) {
+                                case PermissionRequest.RESOURCE_AUDIO_CAPTURE: {
+                                    requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
+                                    break;
+                                }
+                                case PermissionRequest.RESOURCE_VIDEO_CAPTURE: {
+                                    requestPermissionLauncher.launch(Manifest.permission.CAMERA);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -763,6 +820,17 @@ public class LiveCloudActivity extends AppCompatActivity {
                         nativeRequest.deny();
                     } else if (permissionsCallback != null) {
                         permissionsCallback.invoke(permissionSite, permissionType, false);
+                    }
+                }
+            }));
+
+    private final ActivityResultLauncher<String[]> requestMultiplePermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), isGranted -> runOnUiThread(() -> {
+                if (isGranted.containsValue(false)) {
+                    if (nativeRequest != null) {
+                        nativeRequest.grant(nativeRequest.getResources());
+                    } else if (permissionsCallback != null) {
+                        permissionsCallback.invoke(permissionSite, permissionType, true);
                     }
                 }
             }));

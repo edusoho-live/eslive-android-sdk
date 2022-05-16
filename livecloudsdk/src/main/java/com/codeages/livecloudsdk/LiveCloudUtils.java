@@ -36,7 +36,7 @@ import java.util.Random;
 
 public class LiveCloudUtils {
 
-    public static final int SDKVersion = 4;
+    public static final int SDKVersion = 5;
 
     private static final String ALLOWED_CHARACTERS = "0123456789qwertyuiopasdfghjklzxcvbnm";
 
@@ -198,6 +198,18 @@ public class LiveCloudUtils {
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.remove(roomId + "disableX5");
         editor.apply();
+    }
+
+    protected static void setX5Downloaded(Context context, boolean downloaded) {
+        SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putBoolean("x5Downloaded", downloaded);
+        editor.apply();
+    }
+
+    protected static boolean getX5Downloaded(Context context) {
+        SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
+        return sharedPref.getBoolean("x5Downloaded", false);
     }
 
     private static String getNetworkState(Context context) {
