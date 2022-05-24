@@ -11,7 +11,7 @@ import android.widget.Switch;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.codeages.livecloudsdk.LiveCloudActivity;
+import com.codeages.eslivesdk.LiveCloudActivity;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;

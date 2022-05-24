@@ -15,9 +15,9 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.codeages.livecloudsdk.LiveCloudActivity;
-import com.codeages.livecloudsdk.LiveCloudHttpClient;
-import com.codeages.livecloudsdk.LiveCloudUtils;
+import com.codeages.eslivesdk.LiveCloudActivity;
+import com.codeages.eslivesdk.LiveCloudHttpClient;
+import com.codeages.eslivesdk.LiveCloudUtils;
 import com.google.android.material.textfield.TextInputLayout;
 
 import org.json.JSONException;

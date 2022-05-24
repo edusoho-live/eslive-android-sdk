@@ -11,10 +11,10 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.codeages.livecloudsdk.LiveCloudSDK;
-import com.codeages.livecloudsdk.ReplayListener;
-import com.codeages.livecloudsdk.bean.ReplayError;
-import com.codeages.livecloudsdk.bean.ReplayMetas;
+import com.codeages.eslivesdk.LiveCloudSDK;
+import com.codeages.eslivesdk.ReplayListener;
+import com.codeages.eslivesdk.bean.ReplayError;
+import com.codeages.eslivesdk.bean.ReplayMetas;
 
 import java.io.BufferedReader;
 import java.io.File;
