@@ -203,13 +203,13 @@ public class LiveCloudUtils {
     protected static void setX5Downloaded(Context context, boolean downloaded) {
         SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putBoolean("x5Downloaded", downloaded);
+        editor.putString("x5Downloaded", String.valueOf(downloaded));
         editor.apply();
     }
 
-    protected static boolean getX5Downloaded(Context context) {
+    protected static String getX5Downloaded(Context context) {
         SharedPreferences sharedPref = context.getSharedPreferences(LCPref, MODE_PRIVATE);
-        return sharedPref.getBoolean("x5Downloaded", false);
+        return sharedPref.getString("x5Downloaded", null);
     }
 
     private static String getNetworkState(Context context) {

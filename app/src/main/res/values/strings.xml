@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">LiveCloud</string>
+    <string name="app_name">ES大班课测试版</string>
     <string name="update_player">更新播放器</string>
     <string name="update_player_finished">播放器更新完成</string>
 </resources>
