@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
                         String token = (String) new JSONObject(successMsg).get("token");
                         String url = finalApi + "/h5/room/" + room + "/enter?inapp=1&token=" + token;
                         CheckBox enableX5   = findViewById(R.id.checkBox);
-                        Map<String, Object> options = new HashMap<String, Object>() {
+                        HashMap<String, Object> options = new HashMap<String, Object>() {
                             {
                                 put("disableX5", !enableX5.isChecked());
                             }

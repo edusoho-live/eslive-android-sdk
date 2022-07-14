@@ -68,6 +68,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     protected boolean isLive;
     private boolean disableX5;
     private boolean testUrl;
+    private HashMap<String, Object> options;
     private String roomId = "0";
     private android.webkit.PermissionRequest nativeRequest;
     private MediaAccessPermissionsCallback permissionsCallback;
@@ -84,7 +85,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     /**
      * @param isGrantedPermission true: 权限获取成功 false：权限获取失败
      */
-    public static void launch(Context context, String url, boolean isLive, boolean isGrantedPermission, Map<String, Object> options) {
+    public static void launch(Context context, String url, boolean isLive, boolean isGrantedPermission, HashMap<String, Object> options) {
         Intent intent = new Intent(context, LiveCloudActivity.class);
         intent.putExtra("url", url);
         intent.putExtra("isLive", isLive);
@@ -94,15 +95,7 @@ public class LiveCloudActivity extends AppCompatActivity {
         String accessKey = String.valueOf(jwt.get("kid"));
         intent.putExtra("roomId", roomId);
         if (options != null) {
-            if (options.get("logUrl") != null) {
-                intent.putExtra("logUrl", (String) options.get("logUrl"));
-            }
-            if (options.get("disableX5") != null) {
-                intent.putExtra("disableX5", (Boolean) options.get("disableX5"));
-            }
-            if (options.get("testUrl") != null) {
-                intent.putExtra("testUrl", (Boolean) options.get("testUrl"));
-            }
+            intent.putExtra("options", options);
         }
 
         start(context, isLive, intent, roomId, accessKey);
@@ -221,10 +214,13 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         url = getIntent().getStringExtra("url");
         isLive = getIntent().getBooleanExtra("isLive", false);
-        logUrl = getIntent().getStringExtra("logUrl");
-        disableX5 = getIntent().getBooleanExtra("disableX5", false);
+        options = (HashMap<String, Object>) getIntent().getSerializableExtra("options");
+        if (options != null) {
+            logUrl = (String) options.get("logUrl");
+            disableX5 = options.containsKey("disableX5") ? ((Boolean) options.get("disableX5")) : false;
+            testUrl = options.containsKey("testUrl") ? (Boolean) options.get("testUrl") : false;
+        }
         roomId = getIntent().getStringExtra("roomId");
-        testUrl = getIntent().getBooleanExtra("testUrl", false);
 
         loadingView = findViewById(R.id.loadingView);
         loadingView.show();
@@ -759,6 +755,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     public void connect() {
         connect = true;
         LiveCloudUtils.clearTimeoutTimes(this, roomId);
+        evalJs("liveCloudNativeEventCallback({name:'options', payload:" + new JSONObject(options) + "})");
     }
 
     @JavascriptInterface

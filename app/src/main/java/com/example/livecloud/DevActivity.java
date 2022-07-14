@@ -16,7 +16,6 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 public class DevActivity extends AppCompatActivity {
@@ -74,7 +73,7 @@ public class DevActivity extends AppCompatActivity {
             SharedPreferences.Editor editor = sharedPref.edit();
             editor.putString("testUrl", url);
             editor.apply();
-            Map<String, Object> options = new HashMap<String, Object>() {
+            HashMap<String, Object> options = new HashMap<String, Object>() {
                 {
                     put("disableX5", !checkBox.isChecked());
                     put("testUrl", true);
