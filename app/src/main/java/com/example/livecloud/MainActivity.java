@@ -96,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
                                 put("disableX5", !enableX5.isChecked());
                             }
                         };
-                        LiveCloudActivity.launch(MainActivity.this, url, true, true, options);
+                        LiveCloudActivity.launch(MainActivity.this, url, true, true, new JSONObject(options).toString());
 
                         SharedPreferences.Editor editor = sharedPref.edit();
                         editor.putString("roomId", room);

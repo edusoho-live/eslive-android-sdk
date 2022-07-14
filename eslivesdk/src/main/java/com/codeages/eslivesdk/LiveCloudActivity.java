@@ -25,6 +25,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.widget.ContentLoadingProgressBar;
 
+import com.blankj.utilcode.util.GsonUtils;
+import com.codeages.eslivesdk.bean.CloudOptions;
 import com.codeages.eslivesdk.server.HttpServerFactory;
 import com.tencent.smtt.export.external.TbsCoreSettings;
 import com.tencent.smtt.export.external.extension.interfaces.IX5WebChromeClientExtension;
@@ -60,39 +62,64 @@ import java.util.Map;
 
 public class LiveCloudActivity extends AppCompatActivity {
 
-    protected WebView x5WebView;
-    protected ReplayWebView nativeWebView;
-    protected WebView x5DownloadView;
-    protected String url = "";
-    protected String logUrl = "";
-    protected boolean isLive;
-    private boolean disableX5;
-    private boolean testUrl;
-    private HashMap<String, Object> options;
-    private String roomId = "0";
-    private android.webkit.PermissionRequest nativeRequest;
-    private MediaAccessPermissionsCallback permissionsCallback;
-    private String permissionSite;
-    private long permissionType;
-    private Boolean connect = false;
-    private Boolean isFullscreen = false;
-    private Long enterTimestamp;
-    private ContentLoadingProgressBar loadingView;
-    private LiveCloudLogger logger;
-
-    private static final String JSInterface = "LiveCloudBridge";
+    private static final String                           JSInterface                       = "LiveCloudBridge";
+    protected            WebView                          x5WebView;
+    protected            ReplayWebView                    nativeWebView;
+    protected            WebView                          x5DownloadView;
+    protected            String                           url                               = "";
+    protected            String                           logUrl                            = "";
+    protected            boolean                          isLive;
+    private              boolean                          disableX5;
+    private              boolean                          testUrl;
+    private              String                           optionsJsonStr;
+    private              String                           roomId                            = "0";
+    private              android.webkit.PermissionRequest nativeRequest;
+    private              MediaAccessPermissionsCallback   permissionsCallback;
+    private              String                           permissionSite;
+    private              long                             permissionType;
+    private final        ActivityResultLauncher<String>   requestPermissionLauncher         =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> runOnUiThread(() -> {
+                if (isGranted) {
+                    if (nativeRequest != null) {
+                        nativeRequest.grant(nativeRequest.getResources());
+                    } else if (permissionsCallback != null) {
+                        permissionsCallback.invoke(permissionSite, permissionType, true);
+                    }
+                } else {
+                    if (nativeRequest != null) {
+                        nativeRequest.deny();
+                    } else if (permissionsCallback != null) {
+                        permissionsCallback.invoke(permissionSite, permissionType, false);
+                    }
+                }
+            }));
+    private final        ActivityResultLauncher<String[]> requestMultiplePermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), isGranted -> runOnUiThread(() -> {
+                if (isGranted.containsValue(false)) {
+                    if (nativeRequest != null) {
+                        nativeRequest.grant(nativeRequest.getResources());
+                    } else if (permissionsCallback != null) {
+                        permissionsCallback.invoke(permissionSite, permissionType, true);
+                    }
+                }
+            }));
+    private              Boolean                          connect                           = false;
+    private              Boolean                          isFullscreen                      = false;
+    private              Long                             enterTimestamp;
+    private              ContentLoadingProgressBar        loadingView;
+    private              LiveCloudLogger                  logger;
 
     /**
      * @param isGrantedPermission true: 权限获取成功 false：权限获取失败
      */
-    public static void launch(Context context, String url, boolean isLive, boolean isGrantedPermission, HashMap<String, Object> options) {
+    public static void launch(Context context, String url, boolean isLive, boolean isGrantedPermission, String options) {
         Intent intent = new Intent(context, LiveCloudActivity.class);
         intent.putExtra("url", url);
         intent.putExtra("isLive", isLive);
         intent.putExtra("isGrantedPermission", isGrantedPermission);
-        Map<String, Object> jwt = LiveCloudUtils.parseJwt(url);
-        String roomId = String.valueOf(jwt.get("rid"));
-        String accessKey = String.valueOf(jwt.get("kid"));
+        Map<String, Object> jwt       = LiveCloudUtils.parseJwt(url);
+        String              roomId    = String.valueOf(jwt.get("rid"));
+        String              accessKey = String.valueOf(jwt.get("kid"));
         intent.putExtra("roomId", roomId);
         if (options != null) {
             intent.putExtra("options", options);
@@ -129,7 +156,7 @@ public class LiveCloudActivity extends AppCompatActivity {
         int x5Ver = QbSdk.getTbsVersion(context);
         if (x5Ver > 0 &&
                 ((!isLive && x5Ver < 45613) ||    // 倍速播放bug
-                (isLive && x5Ver < 45000))) { // 直播
+                        (isLive && x5Ver < 45000))) { // 直播
             intent.putExtra("disableX5", true);
             context.startActivity(intent);
             return;
@@ -214,11 +241,13 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         url = getIntent().getStringExtra("url");
         isLive = getIntent().getBooleanExtra("isLive", false);
-        options = (HashMap<String, Object>) getIntent().getSerializableExtra("options");
-        if (options != null) {
-            logUrl = (String) options.get("logUrl");
-            disableX5 = options.containsKey("disableX5") ? ((Boolean) options.get("disableX5")) : false;
-            testUrl = options.containsKey("testUrl") ? (Boolean) options.get("testUrl") : false;
+        optionsJsonStr = getIntent().getStringExtra("options");
+
+        CloudOptions cloudOptions = GsonUtils.fromJson(optionsJsonStr, CloudOptions.class);
+        if (cloudOptions != null) {
+            logUrl = cloudOptions.getLogUrl();
+            disableX5 = cloudOptions.isDisableX5();
+            testUrl = cloudOptions.isTestUrl();
         }
         roomId = getIntent().getStringExtra("roomId");
 
@@ -237,17 +266,23 @@ public class LiveCloudActivity extends AppCompatActivity {
         loadRoomURL();
 
         new KeyboardHeightProvider(this).init().setHeightListener((height, density, cutout) -> {
-            evalJs("liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int)(height/density) + "}})");
+            evalJs("liveCloudNativeEventCallback({name:'keyboardHeight', payload:{height:" + (int) (height / density) + "}})");
             if (cutout != null) {
                 List<String> rects = new ArrayList<>();
-                for (Rect c: cutout) {
+                for (Rect c : cutout) {
                     StringBuilder sb = new StringBuilder(32);
-                    sb.append("["); sb.append(c.left); sb.append(",");
-                    sb.append(c.top); sb.append(","); sb.append(c.right);
-                    sb.append(","); sb.append(c.bottom); sb.append("]");
+                    sb.append("[");
+                    sb.append(c.left);
+                    sb.append(",");
+                    sb.append(c.top);
+                    sb.append(",");
+                    sb.append(c.right);
+                    sb.append(",");
+                    sb.append(c.bottom);
+                    sb.append("]");
                     rects.add(sb.toString());
                 }
-                evalJs("liveCloudNativeEventCallback({name:'DisplayCutout', payload:{cutout:" +  Arrays.deepToString(rects.toArray()) + "}})");
+                evalJs("liveCloudNativeEventCallback({name:'DisplayCutout', payload:{cutout:" + Arrays.deepToString(rects.toArray()) + "}})");
             }
             if (isFullscreen) {
                 LiveCloudUtils.hideNavigationBar(this);
@@ -256,7 +291,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
         enterTimestamp = System.currentTimeMillis();
 
-        String userId = getIntent().getStringExtra("userId");
+        String userId   = getIntent().getStringExtra("userId");
         String userName = getIntent().getStringExtra("userName");
         if (null != userId) {
             logger = LiveCloudLogger.getInstance(Long.parseLong(roomId), Long.parseLong(userId), userName, logUrl);
@@ -287,7 +322,6 @@ public class LiveCloudActivity extends AppCompatActivity {
             super.onBackPressed();
         }
     }
-
 
     @Override
     protected void onDestroy() {
@@ -755,7 +789,7 @@ public class LiveCloudActivity extends AppCompatActivity {
     public void connect() {
         connect = true;
         LiveCloudUtils.clearTimeoutTimes(this, roomId);
-        evalJs("liveCloudNativeEventCallback({name:'options', payload:" + new JSONObject(options) + "})");
+        evalJs("liveCloudNativeEventCallback({name:'options', payload:" + optionsJsonStr + "})");
     }
 
     @JavascriptInterface
@@ -781,7 +815,6 @@ public class LiveCloudActivity extends AppCompatActivity {
         runOnUiThread(this::finish);
     }
 
-
     private Map<String, Object> deviceInfoMap() {
         Map<String, Object> info = new HashMap<>(LiveCloudUtils.deviceInfo(this));
         info.put("x5Version", QbSdk.getTbsVersion(this));
@@ -797,7 +830,7 @@ public class LiveCloudActivity extends AppCompatActivity {
 
     private void setWindowShrinkScreen() {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        LiveCloudUtils.fullScreen(this,false);
+        LiveCloudUtils.fullScreen(this, false);
     }
 
     private long enterDurationSecond() {
@@ -811,32 +844,4 @@ public class LiveCloudActivity extends AppCompatActivity {
             nativeWebView.evaluateJavascript(js, null);
         }
     }
-
-    private final ActivityResultLauncher<String> requestPermissionLauncher =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> runOnUiThread(() -> {
-                if (isGranted) {
-                    if (nativeRequest != null) {
-                        nativeRequest.grant(nativeRequest.getResources());
-                    } else if (permissionsCallback != null) {
-                        permissionsCallback.invoke(permissionSite, permissionType, true);
-                    }
-                } else {
-                    if (nativeRequest != null) {
-                        nativeRequest.deny();
-                    } else if (permissionsCallback != null) {
-                        permissionsCallback.invoke(permissionSite, permissionType, false);
-                    }
-                }
-            }));
-
-    private final ActivityResultLauncher<String[]> requestMultiplePermissionLauncher =
-            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), isGranted -> runOnUiThread(() -> {
-                if (isGranted.containsValue(false)) {
-                    if (nativeRequest != null) {
-                        nativeRequest.grant(nativeRequest.getResources());
-                    } else if (permissionsCallback != null) {
-                        permissionsCallback.invoke(permissionSite, permissionType, true);
-                    }
-                }
-            }));
 }

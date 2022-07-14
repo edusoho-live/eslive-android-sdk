@@ -14,6 +14,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.codeages.eslivesdk.LiveCloudActivity;
 import com.google.android.material.textfield.TextInputLayout;
 
+import org.json.JSONObject;
+
 import java.io.File;
 import java.util.HashMap;
 import java.util.Objects;
@@ -79,7 +81,7 @@ public class DevActivity extends AppCompatActivity {
                     put("testUrl", true);
                 }
             };
-            LiveCloudActivity.launch(DevActivity.this, url, type.isChecked(), true, options);
+            LiveCloudActivity.launch(DevActivity.this, url, type.isChecked(), true, new JSONObject(options).toString());
         });
     }
 
