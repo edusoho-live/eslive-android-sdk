@@ -130,7 +130,7 @@ public class LiveCloudSDK {
             LogUtils.d("stop", "cancelFetchReplay: ");
             replayMetas.setStatus(ReplayInfo.Status.PAUSE.ordinal());
             LiveCloudLocal.setReplay(mKey, replayMetas);
-            getLogger(replayMetas).info(FetchCancelled, "取消下载回放缓存", null);
+            getLogger(replayMetas).info(FetchCancelled, "取消下载回放缓存", Map.of("data", replayMetas));
         }
     }
 
@@ -148,7 +148,7 @@ public class LiveCloudSDK {
             int roomId = replayMetas.getRoomId();
             FileUtils.deleteAllInDir(LiveCloudLocal.getReplayDirectory(roomId + ""));
             FileUtils.delete(LiveCloudLocal.getReplayDirectory(roomId + ""));
-            getLogger(replayMetas).info(Deleted, "删除已下载回放缓存", null);
+            getLogger(replayMetas).info(Deleted, "删除已下载回放缓存", Map.of("data", replayMetas));
         }
         LiveCloudLocal.removeReplay(mKey);
         LiveCloudLocal.removeMetasUrl(mKey);
@@ -276,7 +276,7 @@ public class LiveCloudSDK {
             }
         }
         mReplayListener.onReady(replayMetas, downloadTasks.size());
-        getLogger(replayMetas).info(FetchStarted, "开始下载回放缓存", null);
+        getLogger(replayMetas).info(FetchStarted, "开始下载回放缓存", Map.of("data", replayMetas));
         int           taskSum = downloadTasks.size();
         AtomicInteger index   = new AtomicInteger();
         LiveCloudLocal.setReplayStatus(mKey, ReplayInfo.Status.DOWNLOADING.ordinal());
@@ -299,6 +299,7 @@ public class LiveCloudSDK {
                                                       LogUtils.d("stop", "onError: ");
                                                       Map<String, Object> errorMap = new HashMap<>();
                                                       errorMap.put("error", e);
+                                                      errorMap.put("data", replayMetas);
                                                       getLogger(replayMetas).error(FetchFailed, "下载回放缓存失败", errorMap);
                                                   }
 
@@ -314,7 +315,7 @@ public class LiveCloudSDK {
                                                           index.getAndIncrement();
                                                           try {
                                                               if (index.get() == taskSum) {
-                                                                  getLogger(replayMetas).info(FetchFinished, "完成下载回放缓存", null);
+                                                                  getLogger(replayMetas).info(FetchFinished, "完成下载回放缓存", Map.of("data", replayMetas));
                                                                   LiveCloudLocal.setReplayStatus(mKey, ReplayInfo.Status.COMPLETED.ordinal());
                                                                   LiveCloudLocal.setMetasUrl(mKey, getMetasUrl(replayMetaItems));
                                                                   mReplayListener.onFinish(replayMetas);

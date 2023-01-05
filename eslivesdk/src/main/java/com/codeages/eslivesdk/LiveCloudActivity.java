@@ -789,7 +789,9 @@ public class LiveCloudActivity extends AppCompatActivity {
     public void connect() {
         connect = true;
         LiveCloudUtils.clearTimeoutTimes(this, roomId);
-        evalJs("liveCloudNativeEventCallback({name:'options', payload:" + optionsJsonStr + "})");
+        runOnUiThread(() -> {
+            evalJs("liveCloudNativeEventCallback({name:'options', payload:" + optionsJsonStr + "})");
+        });
     }
 
     @JavascriptInterface
