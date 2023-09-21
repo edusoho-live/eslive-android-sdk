@@ -22,7 +22,12 @@ import com.tencent.mmkv.MMKV;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -312,6 +317,7 @@ public class LiveCloudSDK {
                                                           DownloadReplayListener downloadReplayListener = new DownloadReplayListener(replayMetas, index.get() + 1, mUserId, mUsername, mReplayListener);
                                                           downloadTask.enqueue(downloadReplayListener);
                                                       } else if (taskStatus == StatusUtil.Status.COMPLETED) {
+                                                          modifyQiniuM3u8(downloadTask.getFile(), "/live_cloud_replay/" + replayMetas.getRoomId());
                                                           index.getAndIncrement();
                                                           try {
                                                               if (index.get() == taskSum) {
@@ -327,6 +333,32 @@ public class LiveCloudSDK {
                                                   }
                                               });
         LiveCloudLocal.putSub(mKey, subscription);
+    }
+
+    private void modifyQiniuM3u8(File file, String prefix) {
+        if (file == null || !file.exists() || !file.getPath().endsWith(".m3u8")) {
+            return;
+        }
+        List<String> lines = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.endsWith(".ts") && line.startsWith("/fragments/")) {
+                    line = prefix + line;
+                }
+                lines.add(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            for (String line : lines) {
+                writer.write(line);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private String getMetasUrl(List<ReplayMetaItem> replayMetaItems) {
